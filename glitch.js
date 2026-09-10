@@ -490,6 +490,20 @@
     const stage = getStage(clickCount);
     AudioEngine.playClick(stage);
 
+    // Chromatic aberration flash on stage 1 clicks
+    if (stage === 1) {
+      app.classList.add('chroma-flash');
+      setTimeout(() => app.classList.remove('chroma-flash'), 120);
+    }
+
+    // Title text scramble animation
+    if (stage >= 1 && stage <= 3) {
+      const original = title.textContent;
+      const scrambled = scrambleChar(originalTitle, stage + 1);
+      title.textContent = scrambled;
+      setTimeout(() => { title.textContent = stage >= 3 ? scrambleChar(originalTitle, 2) : originalTitle; }, 80);
+    }
+
     if (clickCount >= CLIMAX_CLICK) {
       triggerClimax();
     } else {

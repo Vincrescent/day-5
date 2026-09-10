@@ -366,3 +366,39 @@ html, body {
   .stage-3 #title { animation-duration: 0.3s; }
   .stage-3 #glitch-btn { animation-duration: 0.2s; }
 }
+
+/* ── CRT vignette ─────────────────────────── */
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0,0,0,0.4) 100%
+  );
+}
+
+.stage-2 #app::after,
+.stage-3 #app::after,
+.stage-4 #app::after {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0,0,0,0.6) 100%
+  );
+}
+
+/* ── Chromatic aberration flash ────────────── */
+@keyframes chromaFlash {
+  0% { text-shadow: 0 0 transparent; }
+  25% { text-shadow: 3px 0 var(--cyan), -3px 0 var(--magenta); }
+  50% { text-shadow: -2px 1px var(--cyan), 2px -1px var(--magenta); }
+  100% { text-shadow: 0 0 transparent; }
+}
+
+.chroma-flash #title {
+  animation: chromaFlash 0.12s ease-out !important;
+}
