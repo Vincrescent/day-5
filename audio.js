@@ -1,14 +1,15 @@
 /* ═══════════════════════════════════════════
-   Reality Glitch — Audio Engine
-   Web Audio API: drone + click FX + distortion
+   Reality Glitch — Audio Engine (Infinite)
+   Web Audio API: drone + heartbeat + click FX
    ═══════════════════════════════════════════ */
 
 const AudioEngine = (() => {
   let ctx = null;
   let masterGain = null;
   let droneGain = null;
-  let osc1 = null, osc2 = null, osc3 = null;
+  let osc1 = null, osc2 = null, osc3 = null, osc4 = null;
   let started = false;
+  let heartbeatInterval = null;
 
   function init() {
     if (ctx) return;
@@ -40,46 +41,83 @@ const AudioEngine = (() => {
 
     osc2 = ctx.createOscillator();
     osc2.type = 'sine';
-    osc2.frequency.value = 55.5; // slight detune
+    osc2.frequency.value = 55.5;
     osc2.connect(droneGain);
     osc2.start();
   }
 
-  function setDroneIntensity(stage) {
-    if (!droneGain) return;
+  /* Intensity now takes a continuous value (0-1+) not just stage int */
+  function setDroneIntensity(intensity) {
+    if (!droneGain || !ctx) return;
     const now = ctx.currentTime;
-    const volumes = [0.04, 0.06, 0.1, 0.16, 0];
-    droneGain.gain.linearRampToValueAtTime(volumes[stage] || 0.04, now + 0.3);
+    const vol = Math.min(0.04 + intensity * 0.15, 0.35);
+    droneGain.gain.linearRampToValueAtTime(vol, now + 0.3);
 
-    // Stage 3+: add dissonant third oscillator
-    if (stage >= 3 && !osc3) {
+    // Add dissonant oscillators as intensity grows
+    if (intensity >= 0.5 && !osc3) {
       osc3 = ctx.createOscillator();
       osc3.type = 'sawtooth';
-      osc3.frequency.value = 82.5; // dissonant
-      const osc3Gain = ctx.createGain();
-      osc3Gain.gain.value = 0.03;
-      osc3.connect(osc3Gain);
-      osc3Gain.connect(droneGain);
+      osc3.frequency.value = 82.5;
+      const g3 = ctx.createGain();
+      g3.gain.value = 0.03;
+      osc3.connect(g3);
+      g3.connect(droneGain);
       osc3.start();
     }
-    if (stage < 3 && osc3) {
-      osc3.stop();
-      osc3.disconnect();
-      osc3 = null;
+    if (intensity >= 0.8 && !osc4) {
+      osc4 = ctx.createOscillator();
+      osc4.type = 'triangle';
+      osc4.frequency.value = 41.2; // sub-bass rumble
+      const g4 = ctx.createGain();
+      g4.gain.value = 0.04;
+      osc4.connect(g4);
+      g4.connect(droneGain);
+      osc4.start();
     }
+    // Detune existing oscillators based on intensity
+    if (osc1) osc1.frequency.value = 55 + intensity * 5;
+    if (osc2) osc2.frequency.value = 55.5 - intensity * 3;
   }
 
-  /* ── Click sound ─────────────────────── */
-  function playClick(stage) {
+  /* ── Heartbeat (hover sound) ─────────── */
+  function startHeartbeat(bpm) {
+    stopHeartbeat();
+    if (!ctx) return;
+    const interval = 60000 / Math.max(bpm, 30);
+    heartbeatInterval = setInterval(() => {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      // Low thump
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.06, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(g);
+      g.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }, interval);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+  }
+
+  /* ── Click sound (pitch descends with clicks) ── */
+  function playClick(clickCount) {
     init();
     ensureResumed();
     startDrone();
 
     const now = ctx.currentTime;
-    const duration = 0.06;
+    const intensity = Math.min(clickCount / 50, 1.5);
+    const duration = 0.06 + intensity * 0.04;
 
     // White noise burst
-    const bufferSize = ctx.sampleRate * duration;
+    const bufferSize = Math.floor(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -88,25 +126,24 @@ const AudioEngine = (() => {
     const noise = ctx.createBufferSource();
     noise.buffer = buffer;
 
-    // Bandpass filter
+    // Bandpass — center freq drops (high click → deep bass rumble)
     const filter = ctx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.value = 1200 + stage * 400;
-    filter.Q.value = 1 + stage * 2;
+    filter.frequency.value = Math.max(1800 - clickCount * 30, 200);
+    filter.Q.value = 1 + intensity * 4;
 
-    // Distortion (scales with stage)
+    // Distortion scales continuously
     const distortion = ctx.createWaveShaper();
-    const curve = makeDistortionCurve(stage * 100);
-    distortion.curve = curve;
+    distortion.curve = makeDistortionCurve(clickCount * 15);
     distortion.oversample = '4x';
 
-    // Click gain envelope
+    // Gain envelope
     const clickGain = ctx.createGain();
-    clickGain.gain.setValueAtTime(0.15 + stage * 0.05, now);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + duration + stage * 0.02);
+    clickGain.gain.setValueAtTime(0.12 + intensity * 0.08, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    // Pitch shift via playbackRate
-    noise.playbackRate.value = 1.0 - stage * 0.15;
+    // Pitch drops with click count
+    noise.playbackRate.value = Math.max(1.2 - clickCount * 0.02, 0.3);
 
     noise.connect(filter);
     filter.connect(distortion);
@@ -114,25 +151,25 @@ const AudioEngine = (() => {
     clickGain.connect(masterGain);
 
     noise.start(now);
-    noise.stop(now + duration + stage * 0.03);
+    noise.stop(now + duration + 0.05);
 
-    // Stage 3+: random static bursts
-    if (stage >= 3 && Math.random() > 0.5) {
-      setTimeout(() => playStaticBurst(), Math.random() * 300 + 100);
+    // Random static bursts at higher click counts
+    if (clickCount >= 13 && Math.random() > 0.4) {
+      setTimeout(() => playStaticBurst(intensity), Math.random() * 200 + 50);
     }
   }
 
-  function playStaticBurst() {
+  function playStaticBurst(intensity) {
     if (!ctx) return;
     const now = ctx.currentTime;
-    const dur = 0.03;
-    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const dur = 0.02 + (intensity || 0) * 0.02;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     const g = ctx.createGain();
-    g.gain.value = 0.08;
+    g.gain.value = 0.06 + (intensity || 0) * 0.04;
     src.connect(g);
     g.connect(masterGain);
     src.start(now);
@@ -151,7 +188,7 @@ const AudioEngine = (() => {
     return curve;
   }
 
-  /* ── Climax silence ──────────────────── */
+  /* ── Silence/Restore ──────────────────── */
   function silenceAll() {
     if (!masterGain || !ctx) return;
     masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
@@ -160,14 +197,15 @@ const AudioEngine = (() => {
   function restoreAudio() {
     if (!masterGain || !ctx) return;
     masterGain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.5);
-    setDroneIntensity(0);
   }
 
   /* ── Cleanup ─────────────────────────── */
   function reset() {
-    if (osc3) { osc3.stop(); osc3.disconnect(); osc3 = null; }
+    stopHeartbeat();
+    if (osc3) { try { osc3.stop(); } catch(e){} osc3.disconnect(); osc3 = null; }
+    if (osc4) { try { osc4.stop(); } catch(e){} osc4.disconnect(); osc4 = null; }
     setDroneIntensity(0);
   }
 
-  return { init, playClick, setDroneIntensity, silenceAll, restoreAudio, reset, ensureResumed, startDrone };
+  return { init, playClick, setDroneIntensity, silenceAll, restoreAudio, reset, ensureResumed, startDrone, startHeartbeat, stopHeartbeat };
 })();

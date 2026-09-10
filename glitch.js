@@ -1,28 +1,56 @@
 /* ═══════════════════════════════════════════
-   Reality Glitch — Main Engine
-   Stage escalation, effects, DOM manipulation
+   Reality Glitch — Main Engine (Infinite)
+   No reset. Ever-escalating chaos.
    ═══════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  /* ── State ─────────────────────────────── */
-  const STAGE_THRESHOLDS = [0, 1, 6, 13, 21]; // idle, s1, s2, s3, climax
-  const CLIMAX_CLICK = 25;
-  let clickCount = parseInt(localStorage.getItem('rg_clicks') || '0', 10);
-  let cycleCount = parseInt(localStorage.getItem('rg_cycles') || '0', 10);
-  let titleInterval = null;
-  let shakeInterval = null;
-  let tearRAF = null;
-  let cursorRAF = null;
+  /* ── Constants ─────────────────────────── */
   const originalTitle = 'Reality Glitch';
-  const glitchChars = '░▒▓█▄▀╬╠╣╔╗╚╝┃━┣┫╋▐▌◼◻◾◽';
+  const glitchChars = '░▒▓█▄▀╬╠╣╔╗╚╝┃━┣┫╋▐▌◼◻◾◽⌐¬¡¿ÆÐÞ×÷';
   const originalFavicon = document.getElementById('favicon').href;
+
+  // Konami code sequence
+  const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let konamiIdx = 0;
+
+  // Reactive subtitle dialogue
+  const subtitleLines = [
+    // 0-5
+    "Some things are better left alone.",
+    "I warned you.",
+    "Still going?",
+    "You can't undo this.",
+    "...interesting.",
+    "Almost there? No. There is no 'there.'",
+    // 6-10
+    "You really can't stop, can you?",
+    "The damage is accumulating.",
+    "This page remembers everything.",
+    "Error count: rising.",
+    "Your curiosity is... noted.",
+    // 11-15
+    "Do you feel it yet?",
+    "The cracks are spreading.",
+    "There's no going back now.",
+    "Reality coherence: declining.",
+    "W̷h̸a̵t̶ ̷a̵r̶e̸ ̷y̴o̶u̸ ̷l̴o̵o̶k̵i̸n̶g̸ ̷f̶o̷r̶?",
+    // 16-20
+    "Ṫ̵h̸e̷ ̶v̷o̷i̸d̶ ̸s̵t̶a̷r̵e̷s̵ ̶b̷a̷c̵k̶.",
+    "Y̷o̸u̶ ̶b̵r̸o̷k̵e̸ ̷i̴t̸.",
+    "T̵̢h̴̨ḛ̸r̷̰e̷͇ ̷̣i̸̠s̶̱ ̵̰n̵̰o̶̱ ̸̣b̶̰u̷̱t̷͇t̸̢ǫ̵ṇ̶.",
+    "...",
+    "█████████████████",
+  ];
 
   const buttonTexts = [
     "Don't.", "Stop.", "Why?", "Again?", "Enough.",
-    "Please.", "No.", "Quit.", "W̷h̸y̵?", "S̴t̵o̶p̷."
+    "Please.", "No.", "Quit.", "W̷h̸y̵?", "S̴t̵o̶p̷.",
+    "H̵e̶l̵p̸.", "R̵̦ǘ̵n̵̰.", "░░░", "███", "...",
+    "E̸̢N̸̨Ḍ̵", "V̷̰O̸̱I̵̠D̶̰", "N̵̰U̸̱Ḷ̶L̸̢",
   ];
+
   const errorMessages = [
     { title: 'MEMORY_FAULT', body: 'Segmentation fault at <code>0x4E2F</code>\nStack trace unavailable.' },
     { title: 'RENDER_ERROR', body: '<code>display.render()</code> returned <code>undefined</code>\nFallback context failed.' },
@@ -32,6 +60,10 @@
     { title: 'NULL_POINTER', body: 'Cannot read property <code>existence</code>\nof <code>null</code>.' },
     { title: 'BUFFER_OVERFLOW', body: 'Visual buffer exceeded capacity.\n<code>glitch_level > MAX_SAFE_INTEGER</code>' },
     { title: 'ENTROPY_WARNING', body: 'System entropy approaching maximum.\nReality coherence: <code>12%</code>' },
+    { title: 'DIMENSION_LEAK', body: 'Adjacent reality bleed detected.\n<code>universe[3].merge(universe[7])</code>' },
+    { title: 'TIME_FAULT', body: 'Temporal loop detected at <code>click[∞]</code>.\nCausality: <code>BROKEN</code>' },
+    { title: 'SELF_AWARE', body: 'This page knows you\'re reading this.\n<code>awareness++</code>' },
+    { title: 'VOID_RETURN', body: 'Function <code>escape()</code> returned\n<code>void void void void</code>' },
   ];
 
   /* ── DOM refs ──────────────────────────── */
@@ -52,18 +84,35 @@
   const particleCanvas = document.getElementById('particle-canvas');
   const particleCtx = particleCanvas.getContext('2d') || { clearRect(){}, fillRect(){}, set fillStyle(v){}, beginPath(){}, arc(){}, fill(){} };
 
+  /* ── State ─────────────────────────────── */
+  let clickCount = parseInt(localStorage.getItem('rg_clicks') || '0', 10);
+  let titleInterval = null;
+  let shakeInterval = null;
+  let tearRAF = null;
+  let cursorRAF = null;
+  let particleRAF = null;
+  let invertTimeout = null;
+  let glitchMemoryInterval = null;
+  let isHovering = false;
+
+  function save() { localStorage.setItem('rg_clicks', clickCount); }
+
   /* ── Helpers ───────────────────────────── */
-  function getStage(clicks) {
-    if (clicks >= STAGE_THRESHOLDS[4]) return 4;
-    if (clicks >= STAGE_THRESHOLDS[3]) return 3;
-    if (clicks >= STAGE_THRESHOLDS[2]) return 2;
-    if (clicks >= STAGE_THRESHOLDS[1]) return 1;
-    return 0;
+  // Continuous intensity 0..1+ (never caps — keeps growing slowly)
+  function getIntensity(clicks) {
+    // Fast ramp 0-50, then logarithmic growth forever
+    if (clicks <= 50) return clicks / 50;
+    return 1 + Math.log2(clicks / 50) * 0.3;
   }
 
-  function save() {
-    localStorage.setItem('rg_clicks', clickCount);
-    localStorage.setItem('rg_cycles', cycleCount);
+  // Stage buckets for CSS classes (0-5, stage 5 = "beyond")
+  function getStage(clicks) {
+    if (clicks >= 40) return 5;
+    if (clicks >= 25) return 4;
+    if (clicks >= 13) return 3;
+    if (clicks >= 6) return 2;
+    if (clicks >= 1) return 1;
+    return 0;
   }
 
   function randInt(min, max) {
@@ -79,7 +128,9 @@
     return arr.join('');
   }
 
-  /* ── Tear canvas setup ─────────────────── */
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  /* ── Canvas setup ──────────────────────── */
   function resizeCanvas() {
     tearCanvas.width = window.innerWidth;
     tearCanvas.height = window.innerHeight;
@@ -91,8 +142,7 @@
 
   /* ── Particle system ───────────────────── */
   const particles = [];
-  const MAX_PARTICLES = 60;
-  let particleRAF = null;
+  const MAX_PARTICLES = 80;
 
   function initParticles() {
     particles.length = 0;
@@ -108,70 +158,70 @@
     }
   }
 
-  function updateParticles(stage) {
+  function updateParticles(intensity) {
     if (!particleCtx.clearRect) return;
     particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
-    const speedMult = 1 + stage * 1.5;
-    const colors = ['255,255,255', '0,255,213', '255,0,255'];
+    const speedMult = 1 + intensity * 3;
+    const colors = ['255,255,255', '0,255,213', '255,0,255', '255,51,51'];
 
     for (const p of particles) {
       p.x += p.vx * speedMult;
       p.y += p.vy * speedMult;
-
-      // Wrap around
       if (p.x < 0) p.x = particleCanvas.width;
       if (p.x > particleCanvas.width) p.x = 0;
       if (p.y < 0) p.y = particleCanvas.height;
       if (p.y > particleCanvas.height) p.y = 0;
 
-      // Stage 2+: occasional jitter
-      if (stage >= 2 && Math.random() > 0.95) {
-        p.vx = (Math.random() - 0.5) * stage;
-        p.vy = (Math.random() - 0.5) * stage;
+      if (intensity > 0.3 && Math.random() > 0.95) {
+        p.vx = (Math.random() - 0.5) * intensity * 3;
+        p.vy = (Math.random() - 0.5) * intensity * 3;
       }
 
-      const colorIdx = stage >= 3 ? randInt(0, 2) : stage >= 2 ? randInt(0, 1) : 0;
+      const maxColor = intensity > 0.8 ? 3 : intensity > 0.4 ? 2 : intensity > 0.1 ? 1 : 0;
+      const ci = maxColor > 0 ? randInt(0, maxColor) : 0;
       particleCtx.beginPath();
-      particleCtx.arc(p.x, p.y, p.r * (1 + stage * 0.2), 0, Math.PI * 2);
-      particleCtx.fillStyle = `rgba(${colors[colorIdx]}, ${p.alpha + stage * 0.05})`;
+      particleCtx.arc(p.x, p.y, p.r * (1 + intensity * 0.5), 0, Math.PI * 2);
+      particleCtx.fillStyle = `rgba(${colors[ci]}, ${clamp(p.alpha + intensity * 0.1, 0, 0.8)})`;
       particleCtx.fill();
     }
   }
 
-  function startParticleLoop(stage) {
+  function startParticleLoop() {
     if (particleRAF) cancelAnimationFrame(particleRAF);
     if (particles.length === 0) initParticles();
     function loop() {
-      updateParticles(stage);
+      updateParticles(getIntensity(clickCount));
       particleRAF = requestAnimationFrame(loop);
     }
     particleRAF = requestAnimationFrame(loop);
   }
 
-  /* ── Screen tear effect ────────────────── */
+  /* ── Screen tear ───────────────────────── */
   function drawTear(intensity) {
     tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
-    const tearCount = Math.floor(intensity * 5);
+    const tearCount = Math.floor(intensity * 8);
     for (let i = 0; i < tearCount; i++) {
       const y = Math.random() * tearCanvas.height;
-      const h = randInt(1, 4 + intensity * 3);
-      const offset = (Math.random() - 0.5) * intensity * 30;
+      const h = randInt(1, 3 + intensity * 5);
+      const offset = (Math.random() - 0.5) * intensity * 50;
       tearCtx.save();
-      tearCtx.globalAlpha = 0.3 + intensity * 0.15;
+      tearCtx.globalAlpha = clamp(0.2 + intensity * 0.2, 0, 0.7);
       tearCtx.fillStyle = Math.random() > 0.5 ? '#00ffd5' : '#ff00ff';
       tearCtx.fillRect(offset, y, tearCanvas.width, h);
       tearCtx.restore();
     }
   }
 
-  function startTearLoop(stage) {
+  function startTearLoop() {
     if (tearRAF) cancelAnimationFrame(tearRAF);
-    if (stage < 2) { tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height); return; }
-    const intensity = (stage - 1) / 3;
+    const intensity = getIntensity(clickCount);
+    if (intensity < 0.2) { tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height); return; }
     let lastTear = 0;
     function loop(ts) {
-      if (ts - lastTear > (200 - stage * 40)) {
-        drawTear(intensity);
+      const currentIntensity = getIntensity(clickCount);
+      const interval = Math.max(200 - currentIntensity * 80, 30);
+      if (ts - lastTear > interval) {
+        drawTear(currentIntensity);
         lastTear = ts;
       }
       tearRAF = requestAnimationFrame(loop);
@@ -180,11 +230,12 @@
   }
 
   /* ── Title corruption ──────────────────── */
-  function startTitleCorruption(stage) {
+  function startTitleCorruption() {
     stopTitleCorruption();
-    if (stage < 2) { document.title = originalTitle; return; }
-    const rate = stage >= 3 ? 150 : 300;
-    const chars = stage >= 3 ? 4 : 2;
+    const intensity = getIntensity(clickCount);
+    if (intensity < 0.2) { document.title = originalTitle; return; }
+    const rate = Math.max(400 - intensity * 150, 80);
+    const chars = Math.min(Math.floor(intensity * 3) + 1, originalTitle.length);
     titleInterval = setInterval(() => {
       document.title = scrambleChar(originalTitle, chars);
     }, rate);
@@ -196,40 +247,39 @@
   }
 
   /* ── Favicon corruption ────────────────── */
-  function corruptFavicon(stage) {
-    if (stage < 2) {
+  function corruptFavicon() {
+    const intensity = getIntensity(clickCount);
+    if (intensity < 0.2) {
       document.getElementById('favicon').href = originalFavicon;
       return;
     }
     const c = document.createElement('canvas');
     c.width = 16; c.height = 16;
     const fx = c.getContext('2d');
-    if (!fx) return; // jsdom has no canvas
-    // glitched icon
+    if (!fx) return;
     fx.fillStyle = '#0a0a0a';
     fx.fillRect(0, 0, 16, 16);
-    fx.fillStyle = '#ff00ff';
-    fx.fillRect(2 + Math.random() * 4, 2, 6, 12);
-    fx.fillStyle = '#00ffd5';
-    fx.fillRect(8 + Math.random() * 2, 4, 5, 8);
-    for (let i = 0; i < stage * 3; i++) {
+    const corruption = Math.min(Math.floor(intensity * 5), 20);
+    for (let i = 0; i < corruption; i++) {
       fx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`;
-      fx.fillRect(Math.random() * 16, Math.random() * 16, randInt(1, 4), randInt(1, 3));
+      fx.fillRect(Math.random() * 16, Math.random() * 16, randInt(1, 5), randInt(1, 4));
     }
     document.getElementById('favicon').href = c.toDataURL();
   }
 
   /* ── Page shake ────────────────────────── */
-  function startShake(stage) {
+  function startShake() {
     stopShake();
-    if (stage < 2) { app.style.transform = ''; return; }
-    const maxShake = stage === 2 ? 3 : stage === 3 ? 6 : 10;
+    const intensity = getIntensity(clickCount);
+    if (intensity < 0.2) { app.style.transform = ''; return; }
+    const maxShake = clamp(intensity * 8, 1, 20);
+    const maxRot = clamp(intensity * 0.8, 0, 3);
     shakeInterval = setInterval(() => {
       const x = (Math.random() - 0.5) * maxShake;
       const y = (Math.random() - 0.5) * maxShake;
-      const r = (Math.random() - 0.5) * (stage > 2 ? 1 : 0.3);
+      const r = (Math.random() - 0.5) * maxRot;
       app.style.transform = `translate(${x}px, ${y}px) rotate(${r}deg)`;
-    }, 50);
+    }, Math.max(60 - intensity * 10, 16));
   }
 
   function stopShake() {
@@ -239,8 +289,10 @@
 
   /* ── Fake error popups ─────────────────── */
   function spawnError() {
+    const intensity = getIntensity(clickCount);
+    const maxPopups = Math.min(Math.floor(intensity * 3) + 1, 8);
     const existing = errorContainer.querySelectorAll('.error-popup');
-    if (existing.length >= 3) return;
+    if (existing.length >= maxPopups) return;
 
     const msg = errorMessages[randInt(0, errorMessages.length - 1)];
     const popup = document.createElement('div');
@@ -252,16 +304,12 @@
       </div>
       <div class="popup-body">${msg.body.replace(/\n/g, '<br>')}</div>
     `;
-    popup.style.left = randInt(10, window.innerWidth - 320) + 'px';
-    popup.style.top = randInt(10, window.innerHeight - 200) + 'px';
-
-    const closeBtn = popup.querySelector('.close-x');
-    closeBtn.addEventListener('click', () => dissolvePopup(popup));
-
+    popup.style.left = randInt(10, Math.max(window.innerWidth - 320, 20)) + 'px';
+    popup.style.top = randInt(10, Math.max(window.innerHeight - 200, 20)) + 'px';
+    popup.querySelector('.close-x').addEventListener('click', () => dissolvePopup(popup));
     errorContainer.appendChild(popup);
-
-    // Auto-dissolve after 1.5-3s
-    setTimeout(() => dissolvePopup(popup), randInt(1500, 3000));
+    const lifetime = Math.max(3000 - intensity * 500, 800);
+    setTimeout(() => dissolvePopup(popup), lifetime);
   }
 
   function dissolvePopup(popup) {
@@ -270,213 +318,229 @@
     setTimeout(() => popup.remove(), 400);
   }
 
-  function clearErrors() {
-    errorContainer.innerHTML = '';
-  }
+  function clearErrors() { errorContainer.innerHTML = ''; }
 
   /* ── Fake cursor ───────────────────────── */
   const isTouchDevice = ('ontouchstart' in window) || matchMedia('(hover: none)').matches;
+  let mouseX = 0, mouseY = 0;
+  document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
 
-  function startFakeCursor(stage) {
-    if (isTouchDevice || stage < 2) {
+  function startFakeCursor() {
+    const intensity = getIntensity(clickCount);
+    if (isTouchDevice || intensity < 0.2) {
       fakeCursor.classList.add('hidden');
       document.body.style.cursor = '';
       if (cursorRAF) cancelAnimationFrame(cursorRAF);
       return;
     }
-
     fakeCursor.classList.remove('hidden');
-    if (stage >= 4) {
+    if (intensity >= 0.8) {
       document.body.style.cursor = 'none';
-    } else if (stage >= 2) {
+    } else {
       document.body.style.cursor = 'crosshair';
     }
 
-    let mouseX = 0, mouseY = 0;
-    document.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
-
     function updateCursor() {
+      const ci = getIntensity(clickCount);
       let offX = 0, offY = 0;
-      if (stage >= 2) {
-        offX = (Math.random() - 0.5) * stage * 3;
-        offY = (Math.random() - 0.5) * stage * 3;
-      }
-      // Stage 3: occasional teleport
-      if (stage >= 3 && Math.random() > 0.95) {
-        offX = (Math.random() - 0.5) * 200;
-        offY = (Math.random() - 0.5) * 200;
+      offX = (Math.random() - 0.5) * ci * 6;
+      offY = (Math.random() - 0.5) * ci * 6;
+      // Teleport at higher intensity
+      if (ci >= 0.5 && Math.random() > 0.95) {
+        offX = (Math.random() - 0.5) * 300;
+        offY = (Math.random() - 0.5) * 300;
       }
       fakeCursor.style.left = (mouseX + offX - 10) + 'px';
       fakeCursor.style.top = (mouseY + offY - 10) + 'px';
-      fakeCursor.style.borderColor = stage >= 3 ? '#ff00ff' : '#00ffd5';
-      fakeCursor.style.width = (20 + stage * 2) + 'px';
-      fakeCursor.style.height = (20 + stage * 2) + 'px';
+      const hue = ci > 0.7 ? '#ff3333' : ci > 0.4 ? '#ff00ff' : '#00ffd5';
+      fakeCursor.style.borderColor = hue;
+      const size = 20 + ci * 6;
+      fakeCursor.style.width = size + 'px';
+      fakeCursor.style.height = size + 'px';
       cursorRAF = requestAnimationFrame(updateCursor);
     }
     if (cursorRAF) cancelAnimationFrame(cursorRAF);
     cursorRAF = requestAnimationFrame(updateCursor);
   }
 
-  /* ── Dead pixel (post-climax residue) ──── */
-  function showDeadPixel() {
-    if (cycleCount < 1) { deadPixel.classList.add('hidden'); return; }
-    deadPixel.classList.remove('hidden');
-    deadPixel.style.left = randInt(50, window.innerWidth - 50) + 'px';
-    deadPixel.style.top = randInt(50, window.innerHeight - 50) + 'px';
-    // Cycle 2+: different color
-    deadPixel.style.background = cycleCount === 1 ? '#ff00ff' : '#00ffd5';
-    deadPixel.style.width = '3px';
-    deadPixel.style.height = '3px';
-  }
-
-  function hideDeadPixel() {
-    deadPixel.classList.add('hidden');
-  }
-
-  /* ── Button text ───────────────────────── */
-  function updateButtonText(stage) {
-    if (stage === 0) {
-      btn.textContent = "Don't.";
-    } else if (stage === 1) {
-      btn.textContent = buttonTexts[randInt(0, 4)];
-    } else if (stage === 2) {
-      btn.textContent = buttonTexts[randInt(2, 6)];
-    } else if (stage === 3) {
-      btn.textContent = buttonTexts[randInt(5, 9)];
-    } else {
-      btn.textContent = scrambleChar("STOP", 2);
+  /* ── Dead pixels (accumulate over time) ── */
+  function updateDeadPixels() {
+    const intensity = getIntensity(clickCount);
+    const count = Math.min(Math.floor(intensity * 3), 10);
+    // Remove excess
+    const existing = document.querySelectorAll('.dead-pixel-dot');
+    if (existing.length < count && clickCount > 10) {
+      const dp = document.createElement('div');
+      dp.className = 'dead-pixel-dot';
+      dp.style.cssText = `position:fixed;width:${randInt(2,4)}px;height:${randInt(2,4)}px;background:${['#ff00ff','#00ffd5','#ff3333'][randInt(0,2)]};pointer-events:none;z-index:150;left:${randInt(20,window.innerWidth-20)}px;top:${randInt(20,window.innerHeight-20)}px;`;
+      app.appendChild(dp);
     }
   }
 
-  /* ── Apply stage ───────────────────────── */
-  function applyStage(stage) {
-    // Update CSS class
+  /* ── Screen invert flash ───────────────── */
+  function triggerInvert() {
+    const intensity = getIntensity(clickCount);
+    if (intensity < 0.5 || Math.random() > 0.3) return;
+    app.style.filter = 'invert(1)';
+    const duration = Math.min(30 + intensity * 20, 100);
+    if (invertTimeout) clearTimeout(invertTimeout);
+    invertTimeout = setTimeout(() => { app.style.filter = ''; }, duration);
+  }
+
+  /* ── Glitch memory (post-click flicker) ── */
+  function startGlitchMemory() {
+    stopGlitchMemory();
+    if (clickCount < 20) return;
+    const intensity = getIntensity(clickCount);
+    glitchMemoryInterval = setInterval(() => {
+      if (Math.random() > 0.7) {
+        const oldText = btn.textContent;
+        // Flicker to a "memory" text for 1 frame
+        btn.textContent = buttonTexts[randInt(0, Math.min(clickCount, buttonTexts.length - 1))];
+        setTimeout(() => { btn.textContent = oldText; }, 50);
+      }
+    }, Math.max(2000 - intensity * 300, 500));
+  }
+
+  function stopGlitchMemory() {
+    if (glitchMemoryInterval) { clearInterval(glitchMemoryInterval); glitchMemoryInterval = null; }
+  }
+
+  /* ── Subtitle ──────────────────────────── */
+  function updateSubtitle() {
+    const idx = Math.min(Math.floor(clickCount / 3), subtitleLines.length - 1);
+    subtitle.textContent = subtitleLines[idx];
+    // At very high clicks, scramble the subtitle too
+    if (clickCount > 40) {
+      subtitle.textContent = scrambleChar(subtitleLines[idx], Math.floor(getIntensity(clickCount)));
+    }
+  }
+
+  /* ── Button text ───────────────────────── */
+  function updateButtonText() {
+    const intensity = getIntensity(clickCount);
+    if (clickCount === 0) {
+      btn.textContent = "Don't.";
+    } else if (intensity < 0.3) {
+      btn.textContent = buttonTexts[randInt(0, 4)];
+    } else if (intensity < 0.6) {
+      btn.textContent = buttonTexts[randInt(3, 9)];
+    } else if (intensity < 1.0) {
+      btn.textContent = buttonTexts[randInt(7, 14)];
+    } else {
+      btn.textContent = scrambleChar(buttonTexts[randInt(10, buttonTexts.length - 1)], Math.floor(intensity));
+    }
+  }
+
+  /* ── Progress bar (never fills — keeps growing) ── */
+  function updateProgressBar() {
+    const intensity = getIntensity(clickCount);
+    if (clickCount >= 1) {
+      progressBar.style.opacity = '1';
+      // Bar oscillates and grows but never truly "completes"
+      const pct = Math.min(intensity * 60, 98);
+      progressFill.style.width = pct + '%';
+      if (intensity > 0.8) progressFill.style.background = 'var(--error-red)';
+      else if (intensity > 0.4) progressFill.style.background = 'var(--magenta)';
+      else progressFill.style.background = 'var(--fg)';
+      // At very high intensity the bar starts glitching
+      if (intensity > 1.0) {
+        progressFill.style.width = (pct + (Math.random() - 0.5) * 10) + '%';
+      }
+    } else {
+      progressBar.style.opacity = '0';
+      progressFill.style.width = '0%';
+    }
+  }
+
+  /* ── Apply all effects ─────────────────── */
+  function applyEffects() {
+    const stage = getStage(clickCount);
+    const intensity = getIntensity(clickCount);
+
+    // CSS stage class (caps at 5 for styling)
     app.className = `stage-${stage}`;
 
-    // Counter visibility
-    if (stage >= 1) {
+    // Counter
+    if (clickCount >= 1) {
       counter.classList.remove('hidden');
       counter.textContent = clickCount;
     } else {
       counter.classList.add('hidden');
     }
 
-    // Update button
-    updateButtonText(stage);
+    updateButtonText();
+    updateSubtitle();
+    updateProgressBar();
 
-    // Audio
-    AudioEngine.setDroneIntensity(stage);
+    // Audio drone intensity
+    AudioEngine.setDroneIntensity(intensity);
 
-    // Scanlines, tear, shake
-    startTearLoop(stage);
-    startShake(stage);
-
-    // Particles
-    startParticleLoop(stage);
-
-    // Progress bar
-    if (stage >= 1) {
-      progressBar.style.opacity = '1';
-      const pct = Math.min((clickCount / CLIMAX_CLICK) * 100, 100);
-      progressFill.style.width = pct + '%';
-      // Color shifts with stage
-      if (stage >= 3) progressFill.style.background = 'var(--error-red)';
-      else if (stage >= 2) progressFill.style.background = 'var(--magenta)';
-      else progressFill.style.background = 'var(--fg)';
-    } else {
-      progressBar.style.opacity = '0';
-      progressFill.style.width = '0%';
-    }
-
-    // Title & favicon corruption
-    startTitleCorruption(stage);
-    corruptFavicon(stage);
-
-    // Fake cursor
-    startFakeCursor(stage);
+    // Continuous effects
+    startTearLoop();
+    startShake();
+    startParticleLoop();
+    startTitleCorruption();
+    corruptFavicon();
+    startFakeCursor();
+    updateDeadPixels();
+    startGlitchMemory();
 
     // Error popups (stage 3+)
     if (stage >= 3) {
       spawnError();
-    } else {
-      clearErrors();
-    }
-
-    // Dead pixel
-    if (stage === 0 && cycleCount >= 1 && cycleCount <= 2) {
-      showDeadPixel();
+      // Spawn extra at higher intensity
+      if (intensity > 0.8 && Math.random() > 0.5) spawnError();
     }
   }
 
-  /* ── Climax & Reset ────────────────────── */
-  function triggerClimax() {
-    const stage = 4;
-    applyStage(stage);
+  /* ── Heartbeat on hover ────────────────── */
+  btn.addEventListener('mouseenter', () => {
+    isHovering = true;
+    AudioEngine.ensureResumed();
+    AudioEngine.startDrone();
+    // BPM increases with click count
+    const bpm = Math.min(40 + clickCount * 2, 180);
+    AudioEngine.startHeartbeat(bpm);
+  });
 
-    // Silence before snap
-    AudioEngine.silenceAll();
+  btn.addEventListener('mouseleave', () => {
+    isHovering = false;
+    AudioEngine.stopHeartbeat();
+  });
 
-    setTimeout(() => {
-      // Full reset
-      clickCount = 0;
-      cycleCount++;
-      save();
-
-      stopTitleCorruption();
-      stopShake();
-      if (tearRAF) cancelAnimationFrame(tearRAF);
-      tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
-      if (cursorRAF) cancelAnimationFrame(cursorRAF);
-      if (particleRAF) cancelAnimationFrame(particleRAF);
-      clearErrors();
-
-      document.body.style.cursor = '';
-      fakeCursor.classList.add('hidden');
-
-      AudioEngine.restoreAudio();
-      applyStage(0);
-
-      // Show dead pixel residue
-      if (cycleCount <= 2) showDeadPixel();
-
-      // Subtitle changes after first cycle
-      if (cycleCount === 1) {
-        subtitle.textContent = "You were warned.";
-      } else if (cycleCount === 2) {
-        subtitle.textContent = "...again?";
-      } else {
-        subtitle.textContent = "Some things are better left alone.";
-        hideDeadPixel();
-      }
-    }, 1800);
-  }
-
-  /* ── Full Reset ────────────────────────── */
+  /* ── Full Reset (escape hatch only) ────── */
   function fullReset() {
     clickCount = 0;
-    cycleCount = 0;
     save();
 
     stopTitleCorruption();
     stopShake();
+    stopGlitchMemory();
+    AudioEngine.stopHeartbeat();
     if (tearRAF) cancelAnimationFrame(tearRAF);
     tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
     if (cursorRAF) cancelAnimationFrame(cursorRAF);
     if (particleRAF) cancelAnimationFrame(particleRAF);
+    if (invertTimeout) clearTimeout(invertTimeout);
     clearErrors();
-    hideDeadPixel();
+
+    // Remove all dead pixel dots
+    document.querySelectorAll('.dead-pixel-dot').forEach(d => d.remove());
+    deadPixel.classList.add('hidden');
 
     document.body.style.cursor = '';
     fakeCursor.classList.add('hidden');
-    subtitle.textContent = "Some things are better left alone.";
+    app.style.filter = '';
     progressBar.style.opacity = '0';
     progressFill.style.width = '0%';
 
     AudioEngine.reset();
-    applyStage(0);
+    subtitle.textContent = subtitleLines[0];
+    app.className = 'stage-0';
+    btn.textContent = "Don't.";
+    counter.classList.add('hidden');
+    startParticleLoop();
   }
 
   /* ── Click handler ─────────────────────── */
@@ -487,28 +551,33 @@
     clickCount++;
     save();
 
-    const stage = getStage(clickCount);
-    AudioEngine.playClick(stage);
+    AudioEngine.playClick(clickCount);
 
-    // Chromatic aberration flash on stage 1 clicks
-    if (stage === 1) {
+    // Chromatic aberration flash (stage 1-2)
+    const stage = getStage(clickCount);
+    if (stage <= 2) {
       app.classList.add('chroma-flash');
       setTimeout(() => app.classList.remove('chroma-flash'), 120);
     }
 
-    // Title text scramble animation
-    if (stage >= 1 && stage <= 3) {
-      const original = title.textContent;
-      const scrambled = scrambleChar(originalTitle, stage + 1);
+    // Title text scramble flash
+    const intensity = getIntensity(clickCount);
+    if (intensity > 0) {
+      const scrambled = scrambleChar(originalTitle, Math.min(Math.floor(intensity * 3) + 1, originalTitle.length));
       title.textContent = scrambled;
-      setTimeout(() => { title.textContent = stage >= 3 ? scrambleChar(originalTitle, 2) : originalTitle; }, 80);
+      setTimeout(() => { title.textContent = intensity > 0.6 ? scrambleChar(originalTitle, 2) : originalTitle; }, 80);
     }
 
-    if (clickCount >= CLIMAX_CLICK) {
-      triggerClimax();
-    } else {
-      applyStage(stage);
+    // Screen invert flash (stage 3+)
+    triggerInvert();
+
+    // Update heartbeat BPM if hovering
+    if (isHovering) {
+      const bpm = Math.min(40 + clickCount * 2, 180);
+      AudioEngine.startHeartbeat(bpm);
     }
+
+    applyEffects();
   });
 
   /* ── Escape hatch ──────────────────────── */
@@ -517,16 +586,26 @@
     fullReset();
   });
 
+  /* ── Konami code ───────────────────────── */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === KONAMI[konamiIdx]) {
+      konamiIdx++;
+      if (konamiIdx === KONAMI.length) {
+        konamiIdx = 0;
+        // Easter egg: instant jump to 100 clicks
+        clickCount = Math.max(clickCount, 100);
+        save();
+        // Flash the whole screen
+        app.style.filter = 'hue-rotate(180deg) saturate(3)';
+        setTimeout(() => { app.style.filter = ''; applyEffects(); }, 500);
+      }
+    } else {
+      konamiIdx = 0;
+    }
+  });
+
   /* ── Init ───────────────────────────────── */
-  // Restore state from localStorage
-  const initStage = getStage(clickCount);
-  applyStage(initStage);
-  if (clickCount > 0) {
-    counter.classList.remove('hidden');
-    counter.textContent = clickCount;
-  }
-  if (cycleCount >= 1 && cycleCount <= 2 && initStage === 0) {
-    showDeadPixel();
-  }
+  applyEffects();
+  startParticleLoop();
 
 })();

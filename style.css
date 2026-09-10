@@ -352,6 +352,25 @@ html, body {
   100% { filter: none; }
 }
 
+/* Stage 5: Beyond — maximum permanent chaos */
+.stage-5 #scanlines { opacity: 1; }
+
+.stage-5 #title {
+  text-shadow: 5px 2px var(--cyan), -5px -2px var(--magenta), 0 0 20px rgba(255,0,255,0.5), 0 0 40px rgba(255,51,51,0.3);
+  animation: titleGlitch 0.08s ease-in-out infinite;
+}
+
+.stage-5 #subtitle { opacity: 0.6; color: var(--error-red); }
+
+.stage-5 #glitch-btn {
+  border-color: var(--error-red);
+  color: var(--error-red);
+  box-shadow: 0 0 25px rgba(255,51,51,0.4), 0 0 60px rgba(255,0,255,0.2), inset 0 0 20px rgba(0,255,213,0.1);
+  animation: btnGlitch 0.06s ease-in-out infinite;
+}
+
+.stage-5 #click-counter { opacity: 1; color: var(--error-red); font-size: 0.85rem; }
+
 /* Stage 0: Idle — clean state */
 .stage-0 #scanlines { opacity: 0; }
 .stage-0 #title { text-shadow: none; }
