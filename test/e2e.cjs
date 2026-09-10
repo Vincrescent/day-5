@@ -360,6 +360,23 @@ test('Button dodge system exists (300+)', () => {
   assert.ok(glitchSrc.includes('stopButtonDodge'));
 });
 
+// 36
+test('Cinematic transitions exist for milestones', () => {
+  assert.ok(glitchSrc.includes('cinema100_GlassShatter'));
+  assert.ok(glitchSrc.includes('cinema200_GalaxyCollision'));
+  assert.ok(glitchSrc.includes('cinema300_BlackHole'));
+  assert.ok(glitchSrc.includes('cinema400_Supernova'));
+  assert.ok(glitchSrc.includes('cinema500_RealityShatter'));
+  assert.ok(glitchSrc.includes('triggerCinematic'));
+});
+
+// 37
+test('Cinema canvas element referenced', () => {
+  assert.ok(glitchSrc.includes('cinema-canvas'));
+  assert.ok(glitchSrc.includes('cinemaCtx'));
+  assert.ok(glitchSrc.includes('cinemaRAF'));
+});
+
 // Summary
 console.log(`\n${'═'.repeat(40)}`);
 console.log(`  Results: ${passed}/${total} PASS${failed > 0 ? `, ${failed} FAIL` : ''}`);

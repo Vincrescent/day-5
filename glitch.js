@@ -96,6 +96,9 @@
   const particleCtx = particleCanvas.getContext('2d') || { clearRect(){}, fillRect(){}, set fillStyle(v){}, beginPath(){}, arc(){}, fill(){}, moveTo(){}, lineTo(){}, stroke(){}, set strokeStyle(v){}, set lineWidth(v){} };
   const megaCanvas = document.getElementById('mega-canvas');
   const megaCtx = megaCanvas ? (megaCanvas.getContext('2d') || { clearRect(){}, save(){}, restore(){}, fillRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, stroke(){}, arc(){}, fill(){}, set strokeStyle(v){}, set fillStyle(v){}, set lineWidth(v){}, set globalAlpha(v){}, set globalCompositeOperation(v){}, set shadowBlur(v){}, set shadowColor(v){} }) : null;
+  const cinemaCanvas = document.getElementById('cinema-canvas');
+  const cinemaCtx = cinemaCanvas ? (cinemaCanvas.getContext('2d') || { clearRect(){}, save(){}, restore(){}, fillRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, stroke(){}, arc(){}, fill(){}, closePath(){}, set strokeStyle(v){}, set fillStyle(v){}, set lineWidth(v){}, set globalAlpha(v){}, set globalCompositeOperation(v){}, set shadowBlur(v){}, set shadowColor(v){}, createRadialGradient(){ return { addColorStop(){} }; } }) : null;
+  let cinemaRAF = null;
 
   /* ── State ─────────────────────────────── */
   // Always start fresh on page load — no localStorage persistence
@@ -400,6 +403,749 @@
         ctx.stroke();
       }
       ctx.restore();
+    }
+  }
+
+  // ── Mega canvas render loop ───────────────
+
+  /* ═══════════════════════════════════════════
+     CINEMATIC TRANSITIONS (one-shot at milestones)
+     ═══════════════════════════════════════════ */
+
+  function resizeCinema() {
+    if (!cinemaCanvas) return;
+    cinemaCanvas.width = window.innerWidth;
+    cinemaCanvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCinema);
+  resizeCinema();
+
+  // ── 100: Glass shatter explosion ──────────
+  function cinema100_GlassShatter() {
+    if (!cinemaCtx) return;
+    resizeCinema();
+    const W = cinemaCanvas.width, H = cinemaCanvas.height;
+    const cx = W / 2, cy = H / 2;
+    const fragments = [];
+    const crackLines = [];
+
+    // Generate crack lines from center
+    for (let i = 0; i < 24; i++) {
+      const angle = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+      const len = 200 + Math.random() * Math.max(W, H) * 0.5;
+      const pts = [{ x: cx, y: cy }];
+      let px = cx, py = cy;
+      const segs = 8 + Math.floor(Math.random() * 8);
+      for (let j = 1; j <= segs; j++) {
+        const t = j / segs;
+        const jitter = (Math.random() - 0.5) * 40;
+        px = cx + Math.cos(angle + jitter * 0.01) * len * t;
+        py = cy + Math.sin(angle + jitter * 0.01) * len * t;
+        px += jitter;
+        py += (Math.random() - 0.5) * 40;
+        pts.push({ x: px, y: py });
+      }
+      crackLines.push(pts);
+    }
+
+    // Generate glass fragments
+    for (let i = 0; i < 60; i++) {
+      const dist = 30 + Math.random() * 200;
+      const angle = Math.random() * Math.PI * 2;
+      const size = 15 + Math.random() * 50;
+      fragments.push({
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        vx: Math.cos(angle) * (3 + Math.random() * 8),
+        vy: Math.sin(angle) * (3 + Math.random() * 8),
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.15,
+        size: size,
+        sides: 3 + Math.floor(Math.random() * 3),
+        alpha: 0.6 + Math.random() * 0.4,
+        hue: Math.random() > 0.7 ? 180 + Math.random() * 40 : 0,
+        sat: Math.random() > 0.7 ? 80 : 0,
+        gravity: 0.15 + Math.random() * 0.1,
+      });
+    }
+
+    let frame = 0;
+    const totalFrames = 90; // ~1.5s at 60fps
+    function animate() {
+      frame++;
+      if (frame > totalFrames) {
+        cinemaCtx.clearRect(0, 0, W, H);
+        return;
+      }
+      cinemaCtx.clearRect(0, 0, W, H);
+      const progress = frame / totalFrames;
+      const fadeIn = Math.min(frame / 8, 1);
+      const fadeOut = frame > 60 ? 1 - (frame - 60) / 30 : 1;
+      const masterAlpha = fadeIn * fadeOut;
+
+      // Flash at start
+      if (frame < 6) {
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = (1 - frame / 6) * 0.7;
+        cinemaCtx.fillStyle = '#ffffff';
+        cinemaCtx.fillRect(0, 0, W, H);
+        cinemaCtx.restore();
+      }
+
+      // Draw crack lines growing outward
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = masterAlpha;
+      cinemaCtx.strokeStyle = '#ffffff';
+      cinemaCtx.shadowColor = '#00ffd5';
+      cinemaCtx.shadowBlur = 8;
+      for (const line of crackLines) {
+        const showPts = Math.floor(line.length * Math.min(progress * 3, 1));
+        if (showPts < 2) continue;
+        cinemaCtx.lineWidth = 1 + Math.random() * 1.5;
+        cinemaCtx.beginPath();
+        cinemaCtx.moveTo(line[0].x, line[0].y);
+        for (let i = 1; i < showPts; i++) {
+          cinemaCtx.lineTo(line[i].x, line[i].y);
+        }
+        cinemaCtx.stroke();
+      }
+      cinemaCtx.shadowBlur = 0;
+      cinemaCtx.restore();
+
+      // Draw flying fragments
+      for (const f of fragments) {
+        f.x += f.vx;
+        f.y += f.vy;
+        f.vy += f.gravity;
+        f.rot += f.vr;
+        f.alpha *= 0.985;
+
+        cinemaCtx.save();
+        cinemaCtx.translate(f.x, f.y);
+        cinemaCtx.rotate(f.rot);
+        cinemaCtx.globalAlpha = f.alpha * masterAlpha;
+
+        // Glass shard polygon
+        cinemaCtx.beginPath();
+        for (let j = 0; j < f.sides; j++) {
+          const a = (j / f.sides) * Math.PI * 2;
+          const r = f.size * (0.5 + Math.random() * 0.5);
+          const px = Math.cos(a) * r;
+          const py = Math.sin(a) * r;
+          j === 0 ? cinemaCtx.moveTo(px, py) : cinemaCtx.lineTo(px, py);
+        }
+        cinemaCtx.closePath();
+
+        // Glass fill — semi-transparent with refraction colors
+        const lightness = 70 + Math.random() * 30;
+        cinemaCtx.fillStyle = f.sat > 0
+          ? `hsla(${f.hue}, ${f.sat}%, ${lightness}%, 0.15)`
+          : `rgba(255, 255, 255, 0.08)`;
+        cinemaCtx.fill();
+
+        // Glass edge — bright white/cyan
+        cinemaCtx.strokeStyle = f.sat > 0
+          ? `hsla(${f.hue}, 100%, 80%, 0.7)`
+          : 'rgba(255, 255, 255, 0.6)';
+        cinemaCtx.lineWidth = 1;
+        cinemaCtx.stroke();
+
+        cinemaCtx.restore();
+      }
+
+      cinemaRAF = requestAnimationFrame(animate);
+    }
+    cinemaRAF = requestAnimationFrame(animate);
+  }
+
+  // ── 200: Galaxy collision ─────────────────
+  function cinema200_GalaxyCollision() {
+    if (!cinemaCtx) return;
+    resizeCinema();
+    const W = cinemaCanvas.width, H = cinemaCanvas.height;
+    const cx = W / 2, cy = H / 2;
+
+    // Two spirals colliding
+    const stars = [];
+    const arms = 4;
+    for (let galaxy = 0; galaxy < 2; galaxy++) {
+      const gcx = galaxy === 0 ? cx - 150 : cx + 150;
+      const gcy = galaxy === 0 ? cy - 50 : cy + 50;
+      const dir = galaxy === 0 ? 1 : -1;
+      for (let arm = 0; arm < arms; arm++) {
+        const baseAngle = (arm / arms) * Math.PI * 2;
+        for (let i = 0; i < 40; i++) {
+          const dist = 10 + i * 5;
+          const angle = baseAngle + (i * 0.15) * dir;
+          const spread = (Math.random() - 0.5) * 20;
+          stars.push({
+            x: gcx + Math.cos(angle) * dist + spread,
+            y: gcy + Math.sin(angle) * dist + spread,
+            homeX: gcx,
+            homeY: gcy,
+            size: 0.8 + Math.random() * 2.5,
+            hue: galaxy === 0 ? 200 + Math.random() * 40 : 300 + Math.random() * 60,
+            brightness: 50 + Math.random() * 50,
+            angle: angle,
+            dist: dist,
+            dir: dir,
+            vx: 0, vy: 0,
+            galaxy: galaxy,
+          });
+        }
+      }
+      // Core glow
+      for (let i = 0; i < 20; i++) {
+        stars.push({
+          x: gcx + (Math.random() - 0.5) * 30,
+          y: gcy + (Math.random() - 0.5) * 30,
+          homeX: gcx, homeY: gcy,
+          size: 1 + Math.random() * 3,
+          hue: galaxy === 0 ? 50 : 30,
+          brightness: 80 + Math.random() * 20,
+          angle: Math.random() * Math.PI * 2,
+          dist: Math.random() * 15,
+          dir: dir,
+          vx: 0, vy: 0,
+          galaxy: galaxy,
+        });
+      }
+    }
+
+    // Debris particles from collision
+    const debris = [];
+
+    let frame = 0;
+    const totalFrames = 150; // 2.5s
+    function animate() {
+      frame++;
+      if (frame > totalFrames) {
+        cinemaCtx.clearRect(0, 0, W, H);
+        return;
+      }
+      cinemaCtx.clearRect(0, 0, W, H);
+      const progress = frame / totalFrames;
+      const fadeOut = frame > 120 ? 1 - (frame - 120) / 30 : 1;
+
+      // Phase 1: Spirals rotate toward each other (0-0.4)
+      // Phase 2: Collision — flash + debris (0.4-0.6)
+      // Phase 3: Expansion — everything flies outward (0.6-1.0)
+
+      const collisionPoint = 0.4;
+      const mergeSpeed = progress < collisionPoint ? progress / collisionPoint : 1;
+
+      // Move galaxy centers together
+      const g0cx = cx - 150 * (1 - mergeSpeed);
+      const g0cy = cy - 50 * (1 - mergeSpeed);
+      const g1cx = cx + 150 * (1 - mergeSpeed);
+      const g1cy = cy + 50 * (1 - mergeSpeed);
+
+      // Collision flash
+      if (progress > 0.38 && progress < 0.45) {
+        const flashIntensity = 1 - Math.abs(progress - 0.41) / 0.04;
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = flashIntensity * 0.8 * fadeOut;
+        cinemaCtx.fillStyle = '#ffffff';
+        cinemaCtx.fillRect(0, 0, W, H);
+        cinemaCtx.restore();
+
+        // Spawn debris at collision moment
+        if (frame % 2 === 0 && debris.length < 100) {
+          for (let i = 0; i < 8; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 10;
+            debris.push({
+              x: cx, y: cy,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 0.5 + Math.random() * 2,
+              hue: Math.random() * 360,
+              alpha: 1,
+            });
+          }
+        }
+      }
+
+      // Draw stars
+      for (const s of stars) {
+        const gcx2 = s.galaxy === 0 ? g0cx : g1cx;
+        const gcy2 = s.galaxy === 0 ? g0cy : g1cy;
+
+        if (progress < collisionPoint) {
+          // Rotating toward center
+          s.angle += 0.02 * s.dir;
+          s.x = gcx2 + Math.cos(s.angle) * s.dist;
+          s.y = gcy2 + Math.sin(s.angle) * s.dist;
+        } else if (progress < 0.6) {
+          // Turbulence at collision
+          s.x += (Math.random() - 0.5) * 8;
+          s.y += (Math.random() - 0.5) * 8;
+        } else {
+          // Explosion outward
+          const dx = s.x - cx;
+          const dy = s.y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          s.x += (dx / dist) * 3 * (progress - 0.6) * 5;
+          s.y += (dy / dist) * 3 * (progress - 0.6) * 5;
+        }
+
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = Math.min(s.brightness / 100, 1) * fadeOut;
+        cinemaCtx.fillStyle = `hsl(${s.hue}, 80%, ${s.brightness}%)`;
+        cinemaCtx.shadowColor = `hsl(${s.hue}, 100%, 70%)`;
+        cinemaCtx.shadowBlur = s.size * 3;
+        cinemaCtx.beginPath();
+        cinemaCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        cinemaCtx.fill();
+        cinemaCtx.restore();
+      }
+
+      // Draw debris
+      for (const d of debris) {
+        d.x += d.vx;
+        d.y += d.vy;
+        d.alpha *= 0.98;
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = d.alpha * fadeOut;
+        cinemaCtx.fillStyle = `hsl(${d.hue}, 100%, 70%)`;
+        cinemaCtx.shadowColor = `hsl(${d.hue}, 100%, 50%)`;
+        cinemaCtx.shadowBlur = 4;
+        cinemaCtx.beginPath();
+        cinemaCtx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+        cinemaCtx.fill();
+        cinemaCtx.restore();
+      }
+
+      // Central glow during collision
+      if (progress > 0.35 && progress < 0.7) {
+        const glowInt = 1 - Math.abs(progress - 0.5) / 0.2;
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = glowInt * 0.5 * fadeOut;
+        const grd = cinemaCtx.createRadialGradient(cx, cy, 0, cx, cy, 200);
+        grd.addColorStop(0, 'rgba(255, 200, 100, 0.8)');
+        grd.addColorStop(0.3, 'rgba(255, 100, 50, 0.4)');
+        grd.addColorStop(1, 'transparent');
+        cinemaCtx.fillStyle = grd;
+        cinemaCtx.fillRect(0, 0, W, H);
+        cinemaCtx.restore();
+      }
+
+      cinemaRAF = requestAnimationFrame(animate);
+    }
+    cinemaRAF = requestAnimationFrame(animate);
+  }
+
+  // ── 300: Black hole formation ─────────────
+  function cinema300_BlackHole() {
+    if (!cinemaCtx) return;
+    resizeCinema();
+    const W = cinemaCanvas.width, H = cinemaCanvas.height;
+    const cx = W / 2, cy = H / 2;
+
+    // Accretion disk particles
+    const diskParticles = [];
+    for (let i = 0; i < 200; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 250;
+      diskParticles.push({
+        angle: angle,
+        dist: dist,
+        speed: (200 / dist) * 0.08 + Math.random() * 0.02,
+        size: 0.5 + Math.random() * 2,
+        hue: 20 + (dist / 250) * 30,
+        brightness: 60 + Math.random() * 40,
+        z: (Math.random() - 0.5) * 0.3,
+      });
+    }
+
+    // Matter being sucked in
+    const fallingStars = [];
+    for (let i = 0; i < 40; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 300 + Math.random() * 400;
+      fallingStars.push({
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        size: 1 + Math.random() * 2,
+        hue: Math.random() * 60,
+        trail: [],
+      });
+    }
+
+    let frame = 0;
+    const totalFrames = 120;
+    function animate() {
+      frame++;
+      if (frame > totalFrames) {
+        cinemaCtx.clearRect(0, 0, W, H);
+        return;
+      }
+      cinemaCtx.clearRect(0, 0, W, H);
+      const progress = frame / totalFrames;
+      const fadeIn = Math.min(frame / 15, 1);
+      const fadeOut = frame > 90 ? 1 - (frame - 90) / 30 : 1;
+      const masterAlpha = fadeIn * fadeOut;
+
+      // Event horizon — black circle growing
+      const holeRadius = 10 + progress * 60;
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = masterAlpha;
+      cinemaCtx.fillStyle = '#000000';
+      cinemaCtx.beginPath();
+      cinemaCtx.arc(cx, cy, holeRadius, 0, Math.PI * 2);
+      cinemaCtx.fill();
+
+      // Event horizon ring glow
+      cinemaCtx.strokeStyle = '#ff6600';
+      cinemaCtx.lineWidth = 2 + progress * 3;
+      cinemaCtx.shadowColor = '#ff4400';
+      cinemaCtx.shadowBlur = 20 + progress * 30;
+      cinemaCtx.stroke();
+      cinemaCtx.restore();
+
+      // Accretion disk
+      for (const p of diskParticles) {
+        p.angle += p.speed * (1 + progress * 3);
+        p.dist = Math.max(p.dist - progress * 0.8, holeRadius + 5);
+
+        const tilt = 0.3;
+        const px = cx + Math.cos(p.angle) * p.dist;
+        const py = cy + Math.sin(p.angle) * p.dist * tilt + p.z * 20;
+
+        const distFromCenter = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+        if (distFromCenter < holeRadius) continue;
+
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = (p.brightness / 100) * masterAlpha * 0.8;
+        const heat = Math.max(0, 1 - p.dist / 300);
+        cinemaCtx.fillStyle = `hsl(${p.hue + heat * 20}, ${70 + heat * 30}%, ${p.brightness}%)`;
+        cinemaCtx.shadowColor = `hsl(${p.hue}, 100%, 50%)`;
+        cinemaCtx.shadowBlur = p.size * 2;
+        cinemaCtx.beginPath();
+        cinemaCtx.arc(px, py, p.size, 0, Math.PI * 2);
+        cinemaCtx.fill();
+        cinemaCtx.restore();
+      }
+
+      // Falling matter with trails
+      for (const s of fallingStars) {
+        const dx = cx - s.x;
+        const dy = cy - s.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const pull = 500 / (dist * dist) * (1 + progress * 5);
+        s.x += (dx / dist) * pull;
+        s.y += (dy / dist) * pull;
+
+        s.trail.push({ x: s.x, y: s.y });
+        if (s.trail.length > 15) s.trail.shift();
+
+        // Draw trail
+        if (s.trail.length > 1 && dist > holeRadius) {
+          cinemaCtx.save();
+          cinemaCtx.globalAlpha = masterAlpha * 0.6;
+          cinemaCtx.strokeStyle = `hsl(${s.hue}, 80%, 60%)`;
+          cinemaCtx.lineWidth = 0.8;
+          cinemaCtx.beginPath();
+          cinemaCtx.moveTo(s.trail[0].x, s.trail[0].y);
+          for (let i = 1; i < s.trail.length; i++) {
+            cinemaCtx.lineTo(s.trail[i].x, s.trail[i].y);
+          }
+          cinemaCtx.stroke();
+          cinemaCtx.restore();
+        }
+
+        if (dist > holeRadius) {
+          cinemaCtx.save();
+          cinemaCtx.globalAlpha = masterAlpha;
+          cinemaCtx.fillStyle = `hsl(${s.hue}, 100%, 80%)`;
+          cinemaCtx.beginPath();
+          cinemaCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          cinemaCtx.fill();
+          cinemaCtx.restore();
+        }
+      }
+
+      // Gravitational lensing ring
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = masterAlpha * 0.3;
+      cinemaCtx.strokeStyle = '#ffffff';
+      cinemaCtx.lineWidth = 1;
+      cinemaCtx.beginPath();
+      cinemaCtx.arc(cx, cy, holeRadius + 15 + Math.sin(frame * 0.1) * 5, 0, Math.PI * 2);
+      cinemaCtx.stroke();
+      cinemaCtx.restore();
+
+      cinemaRAF = requestAnimationFrame(animate);
+    }
+    cinemaRAF = requestAnimationFrame(animate);
+  }
+
+  // ── 400: Supernova explosion ──────────────
+  function cinema400_Supernova() {
+    if (!cinemaCtx) return;
+    resizeCinema();
+    const W = cinemaCanvas.width, H = cinemaCanvas.height;
+    const cx = W / 2, cy = H / 2;
+
+    const rays = [];
+    for (let i = 0; i < 36; i++) {
+      rays.push({
+        angle: (i / 36) * Math.PI * 2 + (Math.random() - 0.5) * 0.1,
+        length: 0,
+        maxLength: 200 + Math.random() * Math.max(W, H) * 0.5,
+        width: 2 + Math.random() * 6,
+        hue: Math.random() > 0.5 ? 40 + Math.random() * 30 : 180 + Math.random() * 60,
+        speed: 5 + Math.random() * 15,
+      });
+    }
+
+    const shockwave = { radius: 0, maxRadius: Math.max(W, H) };
+    const sparks = [];
+
+    let frame = 0;
+    const totalFrames = 120;
+    function animate() {
+      frame++;
+      if (frame > totalFrames) {
+        cinemaCtx.clearRect(0, 0, W, H);
+        return;
+      }
+      cinemaCtx.clearRect(0, 0, W, H);
+      const progress = frame / totalFrames;
+      const fadeOut = frame > 80 ? 1 - (frame - 80) / 40 : 1;
+
+      // Flash
+      if (frame < 10) {
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = (1 - frame / 10) * 0.9;
+        cinemaCtx.fillStyle = '#ffffcc';
+        cinemaCtx.fillRect(0, 0, W, H);
+        cinemaCtx.restore();
+      }
+
+      // Central explosion glow
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = Math.max(0, 1 - progress * 1.5) * fadeOut;
+      const coreGlow = cinemaCtx.createRadialGradient(cx, cy, 0, cx, cy, 50 + progress * 100);
+      coreGlow.addColorStop(0, 'rgba(255, 255, 200, 1)');
+      coreGlow.addColorStop(0.3, 'rgba(255, 150, 50, 0.8)');
+      coreGlow.addColorStop(0.7, 'rgba(255, 50, 0, 0.3)');
+      coreGlow.addColorStop(1, 'transparent');
+      cinemaCtx.fillStyle = coreGlow;
+      cinemaCtx.fillRect(0, 0, W, H);
+      cinemaCtx.restore();
+
+      // Rays expanding
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = fadeOut;
+      for (const r of rays) {
+        r.length = Math.min(r.length + r.speed, r.maxLength);
+        cinemaCtx.save();
+        cinemaCtx.translate(cx, cy);
+        cinemaCtx.rotate(r.angle);
+        const grad = cinemaCtx.createRadialGradient(0, 0, 0, r.length, 0, 0);
+        if (grad && grad.addColorStop) {
+          grad.addColorStop(0, `hsla(${r.hue}, 100%, 80%, 0.8)`);
+          grad.addColorStop(0.5, `hsla(${r.hue}, 90%, 60%, 0.4)`);
+          grad.addColorStop(1, 'transparent');
+        }
+        cinemaCtx.fillStyle = `hsla(${r.hue}, 100%, 70%, ${0.4 * fadeOut})`;
+        cinemaCtx.fillRect(0, -r.width / 2, r.length, r.width);
+        cinemaCtx.restore();
+      }
+      cinemaCtx.restore();
+
+      // Shockwave ring
+      shockwave.radius = Math.min(shockwave.radius + 8 + progress * 15, shockwave.maxRadius);
+      if (shockwave.radius < shockwave.maxRadius) {
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = (1 - shockwave.radius / shockwave.maxRadius) * 0.6 * fadeOut;
+        cinemaCtx.strokeStyle = '#ffffff';
+        cinemaCtx.lineWidth = 3 + (1 - progress) * 5;
+        cinemaCtx.shadowColor = '#ff8800';
+        cinemaCtx.shadowBlur = 15;
+        cinemaCtx.beginPath();
+        cinemaCtx.arc(cx, cy, shockwave.radius, 0, Math.PI * 2);
+        cinemaCtx.stroke();
+        cinemaCtx.restore();
+      }
+
+      // Sparks
+      if (frame < 40 && frame % 2 === 0) {
+        for (let i = 0; i < 5; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          sparks.push({
+            x: cx, y: cy,
+            vx: Math.cos(angle) * (3 + Math.random() * 12),
+            vy: Math.sin(angle) * (3 + Math.random() * 12),
+            size: 0.5 + Math.random() * 1.5,
+            alpha: 1,
+            hue: 30 + Math.random() * 40,
+          });
+        }
+      }
+      for (const sp of sparks) {
+        sp.x += sp.vx;
+        sp.y += sp.vy;
+        sp.alpha *= 0.97;
+        sp.vx *= 0.99;
+        sp.vy *= 0.99;
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = sp.alpha * fadeOut;
+        cinemaCtx.fillStyle = `hsl(${sp.hue}, 100%, 70%)`;
+        cinemaCtx.beginPath();
+        cinemaCtx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+        cinemaCtx.fill();
+        cinemaCtx.restore();
+      }
+
+      cinemaRAF = requestAnimationFrame(animate);
+    }
+    cinemaRAF = requestAnimationFrame(animate);
+  }
+
+  // ── 500: Reality shatter — screen fragments ──
+  function cinema500_RealityShatter() {
+    if (!cinemaCtx) return;
+    resizeCinema();
+    const W = cinemaCanvas.width, H = cinemaCanvas.height;
+    const cx = W / 2, cy = H / 2;
+
+    // Divide screen into irregular fragments
+    const fragments = [];
+    const cols = 8, rows = 6;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const bx = (c / cols) * W;
+        const by = (r / rows) * H;
+        const bw = W / cols;
+        const bh = H / rows;
+        // Jitter vertices
+        const jx = (Math.random() - 0.5) * 20;
+        const jy = (Math.random() - 0.5) * 20;
+        const dx = bx + bw / 2 - cx;
+        const dy = by + bh / 2 - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        fragments.push({
+          x: bx + bw / 2 + jx,
+          y: by + bh / 2 + jy,
+          w: bw + Math.random() * 10,
+          h: bh + Math.random() * 10,
+          vx: (dx / dist) * (2 + Math.random() * 4),
+          vy: (dy / dist) * (2 + Math.random() * 4),
+          rot: 0,
+          vr: (Math.random() - 0.5) * 0.08,
+          alpha: 1,
+          hue: Math.random() * 360,
+          delay: dist / 100, // Closer to center break first
+        });
+      }
+    }
+
+    // Void cracks between fragments
+    const voidCracks = [];
+    for (let i = 0; i < 30; i++) {
+      voidCracks.push({
+        x1: Math.random() * W,
+        y1: Math.random() * H,
+        x2: Math.random() * W,
+        y2: Math.random() * H,
+        width: 1 + Math.random() * 3,
+        alpha: 0,
+      });
+    }
+
+    let frame = 0;
+    const totalFrames = 150;
+    function animate() {
+      frame++;
+      if (frame > totalFrames) {
+        cinemaCtx.clearRect(0, 0, W, H);
+        return;
+      }
+      cinemaCtx.clearRect(0, 0, W, H);
+      const progress = frame / totalFrames;
+      const fadeOut = frame > 120 ? 1 - (frame - 120) / 30 : 1;
+
+      // Initial flash
+      if (frame < 8) {
+        cinemaCtx.save();
+        cinemaCtx.globalAlpha = (1 - frame / 8) * 0.9;
+        cinemaCtx.fillStyle = '#ff00ff';
+        cinemaCtx.fillRect(0, 0, W, H);
+        cinemaCtx.restore();
+      }
+
+      // Void cracks appear
+      cinemaCtx.save();
+      for (const vc of voidCracks) {
+        vc.alpha = Math.min(vc.alpha + 0.02, 0.8);
+        cinemaCtx.globalAlpha = vc.alpha * fadeOut;
+        cinemaCtx.strokeStyle = '#ff00ff';
+        cinemaCtx.shadowColor = '#ff00ff';
+        cinemaCtx.shadowBlur = 10;
+        cinemaCtx.lineWidth = vc.width;
+        cinemaCtx.beginPath();
+        cinemaCtx.moveTo(vc.x1, vc.y1);
+        cinemaCtx.lineTo(vc.x2, vc.y2);
+        cinemaCtx.stroke();
+      }
+      cinemaCtx.restore();
+
+      // Fragment separation
+      for (const f of fragments) {
+        if (progress > f.delay * 0.3) {
+          f.x += f.vx * (progress - f.delay * 0.3) * 3;
+          f.y += f.vy * (progress - f.delay * 0.3) * 3;
+          f.rot += f.vr;
+          f.alpha = Math.max(f.alpha - 0.008, 0);
+        }
+
+        cinemaCtx.save();
+        cinemaCtx.translate(f.x, f.y);
+        cinemaCtx.rotate(f.rot);
+        cinemaCtx.globalAlpha = f.alpha * fadeOut;
+
+        // Fragment outline
+        cinemaCtx.strokeStyle = `hsla(${f.hue}, 60%, 50%, 0.5)`;
+        cinemaCtx.lineWidth = 1;
+        cinemaCtx.strokeRect(-f.w / 2, -f.h / 2, f.w, f.h);
+
+        // Inner fill (subtle)
+        cinemaCtx.fillStyle = `hsla(${f.hue}, 40%, 15%, 0.15)`;
+        cinemaCtx.fillRect(-f.w / 2, -f.h / 2, f.w, f.h);
+
+        cinemaCtx.restore();
+      }
+
+      // Central void growing
+      const voidRadius = progress * 80;
+      cinemaCtx.save();
+      cinemaCtx.globalAlpha = Math.min(progress * 2, 0.8) * fadeOut;
+      const voidGrad = cinemaCtx.createRadialGradient(cx, cy, 0, cx, cy, voidRadius);
+      voidGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      voidGrad.addColorStop(0.7, 'rgba(20, 0, 30, 0.5)');
+      voidGrad.addColorStop(1, 'transparent');
+      cinemaCtx.fillStyle = voidGrad;
+      cinemaCtx.fillRect(0, 0, W, H);
+      cinemaCtx.restore();
+
+      cinemaRAF = requestAnimationFrame(animate);
+    }
+    cinemaRAF = requestAnimationFrame(animate);
+  }
+
+  // ── Trigger cinematic transition ──────────
+  function triggerCinematic(milestone) {
+    if (cinemaRAF) cancelAnimationFrame(cinemaRAF);
+    if (cinemaCtx) cinemaCtx.clearRect(0, 0, cinemaCanvas.width, cinemaCanvas.height);
+
+    switch (milestone) {
+      case 100: cinema100_GlassShatter(); break;
+      case 200: cinema200_GalaxyCollision(); break;
+      case 300: cinema300_BlackHole(); break;
+      case 400: cinema400_Supernova(); break;
+      case 500: cinema500_RealityShatter(); break;
     }
   }
 
@@ -932,6 +1678,8 @@
     if (cursorRAF) cancelAnimationFrame(cursorRAF);
     if (particleRAF) cancelAnimationFrame(particleRAF);
     if (megaRAF) cancelAnimationFrame(megaRAF);
+    if (cinemaRAF) cancelAnimationFrame(cinemaRAF);
+    if (cinemaCtx) cinemaCtx.clearRect(0, 0, cinemaCanvas.width, cinemaCanvas.height);
     if (megaCtx) megaCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     if (invertTimeout) clearTimeout(invertTimeout);
     clearErrors();
@@ -981,6 +1729,7 @@
       AudioEngine.playImpact(2.5);
       AudioEngine.playGlassShatter();
       AudioEngine.playDimensionTear();
+      triggerCinematic(clickCount);
       document.body.style.filter = 'invert(1) hue-rotate(180deg)';
       setTimeout(() => { document.body.style.filter = ''; }, 200);
     }
