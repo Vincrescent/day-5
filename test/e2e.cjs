@@ -283,6 +283,77 @@ test('Dead pixel accumulation system exists', () => {
   assert.ok(glitchSrc.includes('dead-pixel-dot'));
 });
 
+// 26
+test('Mega tier 1 (100+): shattered glass system', () => {
+  assert.ok(glitchSrc.includes('generateCracks'));
+  assert.ok(glitchSrc.includes('generateShards'));
+  assert.ok(glitchSrc.includes('drawCracks'));
+  assert.ok(glitchSrc.includes('drawShards'));
+});
+
+// 27
+test('Mega tier 2 (200+): dimension rift system', () => {
+  assert.ok(glitchSrc.includes('generateRifts'));
+  assert.ok(glitchSrc.includes('drawRifts'));
+  assert.ok(glitchSrc.includes('reality-echo'));
+});
+
+// 28
+test('Mega tier 4 (400+): void pulse system', () => {
+  assert.ok(glitchSrc.includes('drawVoidPulse'));
+  assert.ok(glitchSrc.includes('voidPulsePhase'));
+});
+
+// 29
+test('Mega tier 5 (500+): singularity convergence', () => {
+  assert.ok(glitchSrc.includes('singularity'));
+  assert.ok(cssSrc.includes('singularityPull'));
+  assert.ok(cssSrc.includes('.mega-5'));
+});
+
+// 30
+test('getMegaTier returns correct tiers', () => {
+  // Test by running 150 clicks and verifying mega-1 class
+  const dom = createDOM({ clicks: 150 });
+  const app = dom.window.document.getElementById('app');
+  assert.ok(app.classList.contains('mega-1'), 'Should have mega-1 at 150 clicks');
+});
+
+// 31
+test('Mega canvas element exists', () => {
+  const dom = createDOM();
+  assert.ok(dom.window.document.getElementById('mega-canvas'));
+});
+
+// 32
+test('CSS has all mega-tier classes (1-5)', () => {
+  assert.ok(cssSrc.includes('.mega-1'));
+  assert.ok(cssSrc.includes('.mega-2'));
+  assert.ok(cssSrc.includes('.mega-3'));
+  assert.ok(cssSrc.includes('.mega-4'));
+  assert.ok(cssSrc.includes('.mega-5'));
+});
+
+// 33
+test('200+ clicks: mega-2 class applied', () => {
+  const dom = createDOM({ clicks: 250 });
+  const app = dom.window.document.getElementById('app');
+  assert.ok(app.classList.contains('mega-2'), 'Should have mega-2 at 250 clicks');
+});
+
+// 34
+test('500+ clicks: mega-5 class applied, still no crash', () => {
+  const dom = createDOM({ clicks: 500 });
+  const app = dom.window.document.getElementById('app');
+  assert.ok(app.classList.contains('mega-5'), 'Should have mega-5 at 500 clicks');
+  // Click more — should not crash
+  assert.doesNotThrow(() => {
+    const btn = dom.window.document.getElementById('glitch-btn');
+    for (let i = 0; i < 20; i++) btn.click();
+  });
+  assert.strictEqual(parseInt(dom.window.localStorage.getItem('rg_clicks')), 520);
+});
+
 // Summary
 console.log(`\n${'═'.repeat(40)}`);
 console.log(`  Results: ${passed}/${total} PASS${failed > 0 ? `, ${failed} FAIL` : ''}`);
