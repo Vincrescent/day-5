@@ -47,6 +47,10 @@
   const errorContainer = document.getElementById('error-container');
   const deadPixel = document.getElementById('dead-pixel');
   const escapeBtn = document.getElementById('escape-btn');
+  const progressBar = document.getElementById('progress-bar');
+  const progressFill = document.getElementById('progress-fill');
+  const particleCanvas = document.getElementById('particle-canvas');
+  const particleCtx = particleCanvas.getContext('2d') || { clearRect(){}, fillRect(){}, set fillStyle(v){}, beginPath(){}, arc(){}, fill(){} };
 
   /* ── Helpers ───────────────────────────── */
   function getStage(clicks) {
@@ -79,9 +83,70 @@
   function resizeCanvas() {
     tearCanvas.width = window.innerWidth;
     tearCanvas.height = window.innerHeight;
+    particleCanvas.width = window.innerWidth;
+    particleCanvas.height = window.innerHeight;
   }
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
+
+  /* ── Particle system ───────────────────── */
+  const particles = [];
+  const MAX_PARTICLES = 60;
+  let particleRAF = null;
+
+  function initParticles() {
+    particles.length = 0;
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      particles.push({
+        x: Math.random() * particleCanvas.width,
+        y: Math.random() * particleCanvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 1.5 + 0.5,
+        alpha: Math.random() * 0.3 + 0.1,
+      });
+    }
+  }
+
+  function updateParticles(stage) {
+    if (!particleCtx.clearRect) return;
+    particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+    const speedMult = 1 + stage * 1.5;
+    const colors = ['255,255,255', '0,255,213', '255,0,255'];
+
+    for (const p of particles) {
+      p.x += p.vx * speedMult;
+      p.y += p.vy * speedMult;
+
+      // Wrap around
+      if (p.x < 0) p.x = particleCanvas.width;
+      if (p.x > particleCanvas.width) p.x = 0;
+      if (p.y < 0) p.y = particleCanvas.height;
+      if (p.y > particleCanvas.height) p.y = 0;
+
+      // Stage 2+: occasional jitter
+      if (stage >= 2 && Math.random() > 0.95) {
+        p.vx = (Math.random() - 0.5) * stage;
+        p.vy = (Math.random() - 0.5) * stage;
+      }
+
+      const colorIdx = stage >= 3 ? randInt(0, 2) : stage >= 2 ? randInt(0, 1) : 0;
+      particleCtx.beginPath();
+      particleCtx.arc(p.x, p.y, p.r * (1 + stage * 0.2), 0, Math.PI * 2);
+      particleCtx.fillStyle = `rgba(${colors[colorIdx]}, ${p.alpha + stage * 0.05})`;
+      particleCtx.fill();
+    }
+  }
+
+  function startParticleLoop(stage) {
+    if (particleRAF) cancelAnimationFrame(particleRAF);
+    if (particles.length === 0) initParticles();
+    function loop() {
+      updateParticles(stage);
+      particleRAF = requestAnimationFrame(loop);
+    }
+    particleRAF = requestAnimationFrame(loop);
+  }
 
   /* ── Screen tear effect ────────────────── */
   function drawTear(intensity) {
@@ -309,6 +374,23 @@
     startTearLoop(stage);
     startShake(stage);
 
+    // Particles
+    startParticleLoop(stage);
+
+    // Progress bar
+    if (stage >= 1) {
+      progressBar.style.opacity = '1';
+      const pct = Math.min((clickCount / CLIMAX_CLICK) * 100, 100);
+      progressFill.style.width = pct + '%';
+      // Color shifts with stage
+      if (stage >= 3) progressFill.style.background = 'var(--error-red)';
+      else if (stage >= 2) progressFill.style.background = 'var(--magenta)';
+      else progressFill.style.background = 'var(--fg)';
+    } else {
+      progressBar.style.opacity = '0';
+      progressFill.style.width = '0%';
+    }
+
     // Title & favicon corruption
     startTitleCorruption(stage);
     corruptFavicon(stage);
@@ -348,6 +430,7 @@
       if (tearRAF) cancelAnimationFrame(tearRAF);
       tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
       if (cursorRAF) cancelAnimationFrame(cursorRAF);
+      if (particleRAF) cancelAnimationFrame(particleRAF);
       clearErrors();
 
       document.body.style.cursor = '';
@@ -382,12 +465,15 @@
     if (tearRAF) cancelAnimationFrame(tearRAF);
     tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
     if (cursorRAF) cancelAnimationFrame(cursorRAF);
+    if (particleRAF) cancelAnimationFrame(particleRAF);
     clearErrors();
     hideDeadPixel();
 
     document.body.style.cursor = '';
     fakeCursor.classList.add('hidden');
     subtitle.textContent = "Some things are better left alone.";
+    progressBar.style.opacity = '0';
+    progressFill.style.width = '0%';
 
     AudioEngine.reset();
     applyStage(0);

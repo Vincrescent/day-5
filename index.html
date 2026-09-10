@@ -9,6 +9,8 @@
 </head>
 <body>
   <div id="app" class="stage-0">
+    <!-- Background particle canvas -->
+    <canvas id="particle-canvas" class="overlay"></canvas>
     <!-- Scanline overlay -->
     <div id="scanlines" class="overlay"></div>
     <!-- Screen tear canvas -->
@@ -22,6 +24,7 @@
       <p id="subtitle">Some things are better left alone.</p>
       <button id="glitch-btn">Don't.</button>
       <p id="click-counter" class="hidden">0</p>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
     </div>
 
     <!-- Error popup container -->

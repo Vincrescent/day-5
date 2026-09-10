@@ -83,6 +83,31 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Progress bar ─────────────────────────── */
+#progress-bar {
+  width: 120px;
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  margin: 1.5em auto 0;
+  border-radius: 1px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--fg);
+  border-radius: 1px;
+  transition: width 0.15s ease, background 0.3s;
+}
+
+#particle-canvas {
+  z-index: 1;
+  opacity: 0.6;
+}
+
 /* ── Button ───────────────────────────────── */
 #glitch-btn {
   font-family: 'Space Mono', monospace;

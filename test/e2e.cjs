@@ -270,6 +270,25 @@ test('Button text changes across stages', () => {
   assert.notStrictEqual(newText, "Don't.", 'Button text should change by stage 2');
 });
 
+// ── Test 19: Progress bar exists ────────────
+test('Progress bar appears after first click', () => {
+  const dom = createDOM();
+  const bar = dom.window.document.getElementById('progress-bar');
+  const fill = dom.window.document.getElementById('progress-fill');
+  assert.ok(bar, 'Progress bar should exist');
+  assert.ok(fill, 'Progress fill should exist');
+  clickBtn(dom, 5);
+  assert.strictEqual(bar.style.opacity, '1', 'Progress bar visible after clicks');
+});
+
+// ── Test 20: Particle canvas exists ─────────
+test('Particle canvas exists', () => {
+  const dom = createDOM();
+  const pc = dom.window.document.getElementById('particle-canvas');
+  assert.ok(pc, 'Particle canvas should exist');
+  assert.strictEqual(pc.tagName, 'CANVAS');
+});
+
 // ── Summary ─────────────────────────────────
 console.log(`\n${'═'.repeat(40)}`);
 console.log(`  Results: ${passed}/${total} PASS${failed > 0 ? `, ${failed} FAIL` : ''}`);
