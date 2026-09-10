@@ -50,7 +50,7 @@ const AudioEngine = (() => {
   function setDroneIntensity(intensity) {
     if (!droneGain || !ctx) return;
     const now = ctx.currentTime;
-    const vol = Math.min(0.04 + intensity * 0.15, 0.35);
+    const vol = Math.min(0.04 + intensity * 0.12, 0.4);
     droneGain.gain.linearRampToValueAtTime(vol, now + 0.3);
 
     // Add dissonant oscillators as intensity grows
@@ -67,16 +67,18 @@ const AudioEngine = (() => {
     if (intensity >= 0.8 && !osc4) {
       osc4 = ctx.createOscillator();
       osc4.type = 'triangle';
-      osc4.frequency.value = 41.2; // sub-bass rumble
+      osc4.frequency.value = 41.2;
       const g4 = ctx.createGain();
       g4.gain.value = 0.04;
       osc4.connect(g4);
       g4.connect(droneGain);
       osc4.start();
     }
-    // Detune existing oscillators based on intensity
-    if (osc1) osc1.frequency.value = 55 + intensity * 5;
-    if (osc2) osc2.frequency.value = 55.5 - intensity * 3;
+    // Detune oscillators — more extreme at high intensity
+    if (osc1) osc1.frequency.value = 55 + intensity * 8;
+    if (osc2) osc2.frequency.value = 55.5 - intensity * 5;
+    if (osc3) osc3.frequency.value = 82.5 + Math.sin(intensity) * 10;
+    if (osc4) osc4.frequency.value = 41.2 - intensity * 2;
   }
 
   /* ── Heartbeat (hover sound) ─────────── */
