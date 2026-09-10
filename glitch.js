@@ -976,6 +976,15 @@
 
     AudioEngine.playClick(clickCount);
 
+    // Mega-tier transition: big impact at threshold boundaries
+    if (clickCount === 100 || clickCount === 200 || clickCount === 300 || clickCount === 400 || clickCount === 500) {
+      AudioEngine.playImpact(2.5);
+      AudioEngine.playGlassShatter();
+      AudioEngine.playDimensionTear();
+      document.body.style.filter = 'invert(1) hue-rotate(180deg)';
+      setTimeout(() => { document.body.style.filter = ''; }, 200);
+    }
+
     const stage = getStage(clickCount);
     if (stage <= 2) {
       app.classList.add('chroma-flash');
