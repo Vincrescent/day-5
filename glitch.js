@@ -853,11 +853,51 @@
     // Mega effects canvas
     if (tier >= 1) startMegaLoop();
 
+    // Button dodge (300+)
+    initButtonDodge();
+
     if (stage >= 3) {
       spawnError();
       if (intensity > 0.8 || tier >= 1) spawnError();
       if (tier >= 2) spawnError();
     }
+  }
+
+  /* ── Button dodge (300+) ────────────────── */
+  let dodgeActive = false;
+
+  function initButtonDodge() {
+    if (dodgeActive || clickCount < 300) return;
+    dodgeActive = true;
+    btn.addEventListener('mousemove', handleDodge);
+  }
+
+  function handleDodge(e) {
+    if (clickCount < 300) return;
+    const tier = getMegaTier(clickCount);
+    const dodgeChance = clamp((tier - 2) * 0.15, 0, 0.4);
+    if (Math.random() > dodgeChance) return;
+
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 100) return;
+
+    // Dodge away from cursor
+    const maxDodge = 30 + tier * 15;
+    const ox = (-dx / dist) * maxDodge * Math.random();
+    const oy = (-dy / dist) * maxDodge * Math.random();
+    btn.style.transform = `translate(${ox}px, ${oy}px)`;
+    setTimeout(() => { btn.style.transform = ''; }, 300);
+  }
+
+  function stopButtonDodge() {
+    dodgeActive = false;
+    btn.removeEventListener('mousemove', handleDodge);
+    btn.style.transform = '';
   }
 
   /* ── Heartbeat on hover ────────────────── */
@@ -883,6 +923,7 @@
     stopShake();
     stopGlitchMemory();
     stopEchos();
+    stopButtonDodge();
     AudioEngine.stopHeartbeat();
     if (tearRAF) cancelAnimationFrame(tearRAF);
     tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
