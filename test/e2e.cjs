@@ -346,12 +346,18 @@ test('500+ clicks: mega-5 class applied, still no crash', () => {
   const dom = createDOM({ clicks: 500 });
   const app = dom.window.document.getElementById('app');
   assert.ok(app.classList.contains('mega-5'), 'Should have mega-5 at 500 clicks');
-  // Click more — should not crash
   assert.doesNotThrow(() => {
     const btn = dom.window.document.getElementById('glitch-btn');
     for (let i = 0; i < 20; i++) btn.click();
   });
   assert.strictEqual(parseInt(dom.window.localStorage.getItem('rg_clicks')), 520);
+});
+
+// 35
+test('Button dodge system exists (300+)', () => {
+  assert.ok(glitchSrc.includes('initButtonDodge'));
+  assert.ok(glitchSrc.includes('handleDodge'));
+  assert.ok(glitchSrc.includes('stopButtonDodge'));
 });
 
 // Summary
