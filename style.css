@@ -1,0 +1,343 @@
+/* ═══════════════════════════════════════════
+   Reality Glitch — Base Styles
+   ═══════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0a;
+  --fg: #e0e0e0;
+  --accent: #ffffff;
+  --cyan: #00ffd5;
+  --magenta: #ff00ff;
+  --error-red: #ff3333;
+  --glitch-speed: 0.15s;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Overlays ─────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+#scanlines {
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  transition: opacity 0.5s;
+}
+
+#tear-canvas {
+  z-index: 101;
+}
+
+/* ── Content ──────────────────────────────── */
+#app {
+  width: 100%; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: transform var(--glitch-speed) ease;
+}
+
+#content {
+  text-align: center;
+  z-index: 10;
+  transition: transform var(--glitch-speed) ease;
+}
+
+#title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5em;
+  transition: text-shadow var(--glitch-speed), transform var(--glitch-speed);
+}
+
+#subtitle {
+  font-size: clamp(0.8rem, 2vw, 1.1rem);
+  opacity: 0.5;
+  margin-bottom: 2em;
+  transition: opacity 0.3s;
+}
+
+#click-counter {
+  margin-top: 1.5em;
+  font-size: 0.75rem;
+  opacity: 0.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Button ───────────────────────────────── */
+#glitch-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  font-weight: 700;
+  padding: 0.8em 2.5em;
+  border: 2px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  position: relative;
+  letter-spacing: 0.05em;
+  transition: all var(--glitch-speed) ease;
+  outline: none;
+}
+
+#glitch-btn:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+#glitch-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Escape hatch ─────────────────────────── */
+#escape-btn {
+  position: fixed;
+  bottom: 6px; right: 6px;
+  width: 6px; height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 200;
+  transition: opacity 0.3s;
+}
+#escape-btn:hover { opacity: 1; background: rgba(255,255,255,0.3); }
+
+/* ── Dead pixel ───────────────────────────── */
+#dead-pixel {
+  position: fixed;
+  width: 3px; height: 3px;
+  background: var(--magenta);
+  z-index: 150;
+  pointer-events: none;
+}
+
+/* ── Fake cursor ──────────────────────────── */
+#fake-cursor {
+  position: fixed;
+  width: 20px; height: 20px;
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 200;
+  transition: none;
+  mix-blend-mode: difference;
+}
+
+/* ── Error popup ──────────────────────────── */
+.error-popup {
+  position: fixed;
+  z-index: 180;
+  min-width: 280px;
+  max-width: 380px;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  font-size: 0.75rem;
+  animation: popupIn 0.15s ease-out;
+  overflow: hidden;
+}
+
+.error-popup .popup-title {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+  color: var(--error-red);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.error-popup .popup-title .close-x {
+  cursor: pointer;
+  opacity: 0.6;
+  font-size: 1rem;
+  line-height: 1;
+}
+.error-popup .popup-title .close-x:hover { opacity: 1; }
+
+.error-popup .popup-body {
+  padding: 10px;
+  color: #aaa;
+  line-height: 1.5;
+  font-family: 'Space Mono', monospace;
+}
+
+.error-popup .popup-body code {
+  color: var(--error-red);
+  background: rgba(255,0,0,0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+@keyframes popupIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.popup-dissolve {
+  animation: popupOut 0.4s ease-in forwards;
+}
+
+@keyframes popupOut {
+  0% { opacity: 1; filter: none; }
+  50% { opacity: 0.5; filter: blur(2px) hue-rotate(90deg); }
+  100% { opacity: 0; filter: blur(8px) hue-rotate(180deg); transform: scale(0.9) skewX(5deg); }
+}
+
+/* ═══════════════════════════════════════════
+   Stage-specific styles
+   ═══════════════════════════════════════════ */
+
+/* Stage 1: Subtle jitter */
+.stage-1 #glitch-btn {
+  animation: btnJitter 0.1s ease-in-out;
+}
+
+.stage-1 #title {
+  text-shadow: 1px 0 var(--cyan), -1px 0 var(--magenta);
+}
+
+@keyframes btnJitter {
+  0%, 100% { transform: translate(0,0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, -2px); }
+}
+
+/* Stage 2: Layout shifts */
+.stage-2 #scanlines { opacity: 1; }
+
+.stage-2 #title {
+  text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta);
+  animation: titleShift 0.3s ease-in-out;
+}
+
+.stage-2 #subtitle { opacity: 0.3; }
+
+.stage-2 #glitch-btn {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  animation: btnJitter 0.08s ease-in-out;
+}
+
+.stage-2 #click-counter { opacity: 0.5; color: var(--magenta); }
+
+@keyframes titleShift {
+  0%, 100% { transform: skewX(0deg); }
+  30% { transform: skewX(-2deg); }
+  70% { transform: skewX(1deg); }
+}
+
+/* Stage 3: Heavy distortion */
+.stage-3 #scanlines { opacity: 1; }
+
+.stage-3 #title {
+  text-shadow: 3px 1px var(--cyan), -3px -1px var(--magenta), 0 0 10px rgba(255,0,255,0.3);
+  animation: titleGlitch 0.15s ease-in-out infinite;
+}
+
+.stage-3 #subtitle { opacity: 0.15; }
+
+.stage-3 #glitch-btn {
+  border-color: var(--magenta);
+  color: var(--magenta);
+  box-shadow: 0 0 15px rgba(255,0,255,0.3), inset 0 0 15px rgba(0,255,213,0.1);
+  animation: btnGlitch 0.1s ease-in-out infinite;
+}
+
+.stage-3 #click-counter { opacity: 0.8; color: var(--error-red); }
+
+@keyframes titleGlitch {
+  0%, 100% { transform: translate(0,0) skewX(0); }
+  20% { transform: translate(-3px, 2px) skewX(-3deg); }
+  40% { transform: translate(2px, -1px) skewX(2deg); }
+  60% { transform: translate(-1px, 3px) skewX(-1deg); }
+  80% { transform: translate(3px, -2px) skewX(1deg); }
+}
+
+@keyframes btnGlitch {
+  0%, 100% { transform: translate(0,0) skew(0); }
+  25% { transform: translate(-3px, 2px) skew(-2deg, 1deg); }
+  50% { transform: translate(2px, -3px) skew(1deg, -1deg); }
+  75% { transform: translate(-1px, 1px) skew(-1deg, 2deg); }
+}
+
+/* Stage 4: Climax */
+.stage-4 {
+  animation: climaxFlash 1.5s ease-out forwards;
+}
+
+.stage-4 #scanlines { opacity: 1; }
+
+.stage-4 #title {
+  text-shadow: 5px 2px var(--cyan), -5px -2px var(--magenta), 0 0 30px rgba(255,0,255,0.6);
+  animation: climaxTitle 0.1s ease-in-out infinite;
+}
+
+.stage-4 #glitch-btn {
+  border-color: var(--error-red);
+  color: var(--error-red);
+  box-shadow: 0 0 30px rgba(255,0,0,0.5);
+  animation: climaxBtn 0.05s ease-in-out infinite;
+}
+
+@keyframes climaxTitle {
+  0%, 100% { transform: translate(0,0) skewX(0) scale(1); }
+  10% { transform: translate(-5px, 3px) skewX(-5deg) scale(1.02); }
+  30% { transform: translate(4px, -4px) skewX(4deg) scale(0.98); }
+  50% { transform: translate(-3px, 5px) skewX(-3deg) scale(1.01); }
+  70% { transform: translate(5px, -2px) skewX(5deg) scale(0.99); }
+  90% { transform: translate(-2px, 4px) skewX(-2deg) scale(1.02); }
+}
+
+@keyframes climaxBtn {
+  0%, 100% { transform: translate(0,0) rotate(0); }
+  25% { transform: translate(-4px, 3px) rotate(-2deg); }
+  50% { transform: translate(3px, -4px) rotate(2deg); }
+  75% { transform: translate(-2px, 2px) rotate(-1deg); }
+}
+
+@keyframes climaxFlash {
+  0% { filter: none; }
+  10% { filter: hue-rotate(90deg) saturate(3) brightness(1.5); }
+  30% { filter: hue-rotate(180deg) saturate(2) brightness(0.5) blur(2px); }
+  50% { filter: hue-rotate(270deg) saturate(4) brightness(2) blur(4px); }
+  70% { filter: hue-rotate(360deg) saturate(1) brightness(0.3) blur(1px); }
+  90% { filter: invert(1) blur(6px); }
+  100% { filter: none; }
+}
+
+/* Stage 0: Idle — clean state */
+.stage-0 #scanlines { opacity: 0; }
+.stage-0 #title { text-shadow: none; }
+.stage-0 #glitch-btn { border-color: var(--fg); color: var(--fg); }
+
+/* ── Hidden utility ───────────────────────── */
+.hidden { display: none !important; }
+
+/* ── Mobile adjustments ───────────────────── */
+@media (hover: none) {
+  #fake-cursor { display: none !important; }
+  .stage-3 #title { animation-duration: 0.3s; }
+  .stage-3 #glitch-btn { animation-duration: 0.2s; }
+}

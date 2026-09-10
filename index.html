@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reality Glitch</title>
+  <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect fill='%23111' width='16' height='16'/><circle cx='8' cy='8' r='3' fill='%23fff'/></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="stage-0">
+    <!-- Scanline overlay -->
+    <div id="scanlines" class="overlay"></div>
+    <!-- Screen tear canvas -->
+    <canvas id="tear-canvas" class="overlay"></canvas>
+    <!-- Fake cursor -->
+    <div id="fake-cursor" class="hidden"></div>
+
+    <!-- Main content -->
+    <div id="content">
+      <h1 id="title">Reality Glitch</h1>
+      <p id="subtitle">Some things are better left alone.</p>
+      <button id="glitch-btn">Don't.</button>
+      <p id="click-counter" class="hidden">0</p>
+    </div>
+
+    <!-- Error popup container -->
+    <div id="error-container"></div>
+
+    <!-- Post-climax residue -->
+    <div id="dead-pixel" class="hidden"></div>
+
+    <!-- Escape hatch -->
+    <div id="escape-btn" title="Reset"></div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="glitch.js"></script>
+</body>
+</html>
