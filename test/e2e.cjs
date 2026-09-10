@@ -176,10 +176,11 @@ test('Escape button exists and resets to 0', () => {
 });
 
 // 12
-test('State persists from localStorage', () => {
-  const dom = createDOM({ clicks: 30 });
-  assert.ok(dom.window.document.getElementById('app').classList.contains('stage-4'));
-  assert.strictEqual(dom.window.document.getElementById('click-counter').textContent, '30');
+test('Starts fresh on page load (no persistence)', () => {
+  const dom = createDOM();
+  const count = dom.window.document.getElementById('click-counter');
+  assert.ok(count.classList.contains('hidden'), 'Counter hidden at start');
+  assert.ok(dom.window.document.getElementById('app').classList.contains('stage-0'));
 });
 
 // 13
@@ -312,11 +313,11 @@ test('Mega tier 5 (500+): singularity convergence', () => {
 });
 
 // 30
-test('getMegaTier returns correct tiers', () => {
-  // Test by running 150 clicks and verifying mega-1 class
-  const dom = createDOM({ clicks: 150 });
+test('getMegaTier: mega-1 at 100+ clicks', () => {
+  const dom = createDOM();
+  clickBtn(dom, 100);
   const app = dom.window.document.getElementById('app');
-  assert.ok(app.classList.contains('mega-1'), 'Should have mega-1 at 150 clicks');
+  assert.ok(app.classList.contains('mega-1'), 'Should have mega-1 at 100 clicks');
 });
 
 // 31
@@ -336,20 +337,19 @@ test('CSS has all mega-tier classes (1-5)', () => {
 
 // 33
 test('200+ clicks: mega-2 class applied', () => {
-  const dom = createDOM({ clicks: 250 });
+  const dom = createDOM();
+  clickBtn(dom, 200);
   const app = dom.window.document.getElementById('app');
-  assert.ok(app.classList.contains('mega-2'), 'Should have mega-2 at 250 clicks');
+  assert.ok(app.classList.contains('mega-2'), 'Should have mega-2 at 200 clicks');
 });
 
 // 34
 test('500+ clicks: mega-5 class applied, still no crash', () => {
-  const dom = createDOM({ clicks: 500 });
+  const dom = createDOM();
+  clickBtn(dom, 500);
   const app = dom.window.document.getElementById('app');
   assert.ok(app.classList.contains('mega-5'), 'Should have mega-5 at 500 clicks');
-  assert.doesNotThrow(() => {
-    const btn = dom.window.document.getElementById('glitch-btn');
-    for (let i = 0; i < 20; i++) btn.click();
-  });
+  assert.doesNotThrow(() => clickBtn(dom, 20));
   assert.strictEqual(parseInt(dom.window.localStorage.getItem('rg_clicks')), 520);
 });
 

@@ -98,7 +98,9 @@
   const megaCtx = megaCanvas ? (megaCanvas.getContext('2d') || { clearRect(){}, save(){}, restore(){}, fillRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, stroke(){}, arc(){}, fill(){}, set strokeStyle(v){}, set fillStyle(v){}, set lineWidth(v){}, set globalAlpha(v){}, set globalCompositeOperation(v){}, set shadowBlur(v){}, set shadowColor(v){} }) : null;
 
   /* ── State ─────────────────────────────── */
-  let clickCount = parseInt(localStorage.getItem('rg_clicks') || '0', 10);
+  // Always start fresh on page load — no localStorage persistence
+  let clickCount = 0;
+  localStorage.removeItem('rg_clicks');
   let titleInterval = null;
   let shakeInterval = null;
   let tearRAF = null;
