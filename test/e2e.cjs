@@ -377,6 +377,32 @@ test('Cinema canvas element referenced', () => {
   assert.ok(glitchSrc.includes('cinemaRAF'));
 });
 
+// 38
+test('Cursor trail system exists (stage 3+)', () => {
+  assert.ok(glitchSrc.includes('cursor-trail-dot'));
+  assert.ok(glitchSrc.includes('trailDots'));
+  assert.ok(glitchSrc.includes('MAX_TRAIL'));
+});
+
+// 39
+test('Konami code has visual + audio feedback', () => {
+  assert.ok(glitchSrc.includes('konami-flash'));
+  assert.ok(glitchSrc.includes('playImpact'));
+  assert.ok(glitchSrc.includes('triggerCinematic'));
+});
+
+// 40
+test('CSS has cursor trail, button aura, konami flash, nebula, mega shake', () => {
+  assert.ok(cssSrc.includes('cursor-trail-dot'));
+  assert.ok(cssSrc.includes('btnAura1'));
+  assert.ok(cssSrc.includes('btnAura2'));
+  assert.ok(cssSrc.includes('btnAura3'));
+  assert.ok(cssSrc.includes('konami-flash'));
+  assert.ok(cssSrc.includes('nebulaShift'));
+  assert.ok(cssSrc.includes('megaShake2'));
+  assert.ok(cssSrc.includes('megaShake3'));
+});
+
 // Summary
 console.log(`\n${'═'.repeat(40)}`);
 console.log(`  Results: ${passed}/${total} PASS${failed > 0 ? `, ${failed} FAIL` : ''}`);

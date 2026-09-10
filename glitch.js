@@ -1662,6 +1662,48 @@
     AudioEngine.stopHeartbeat();
   });
 
+  /* ── Cursor trail (stage 3+) ────────────── */
+  const trailDots = [];
+  const MAX_TRAIL = 20;
+
+  document.addEventListener('mousemove', (e) => {
+    if (clickCount < 13) return; // stage 3+
+    const tier = getMegaTier(clickCount);
+    const intensity = getIntensity(clickCount);
+
+    const dot = document.createElement('div');
+    dot.className = 'cursor-trail-dot';
+    const size = 4 + tier * 3 + Math.random() * 4;
+    const colors = ['#00ffd5', '#ff00ff', '#ff3333', '#ffffff'];
+    const color = colors[randInt(0, colors.length - 1)];
+    dot.style.cssText = `
+      left:${e.clientX - size / 2}px;
+      top:${e.clientY - size / 2}px;
+      width:${size}px; height:${size}px;
+      background:${color};
+      opacity:${0.2 + intensity * 0.2 + tier * 0.05};
+    `;
+    document.body.appendChild(dot);
+    trailDots.push(dot);
+
+    // Fade and remove
+    const lifespan = 200 + tier * 100;
+    setTimeout(() => {
+      dot.style.opacity = '0';
+      setTimeout(() => {
+        dot.remove();
+        const idx = trailDots.indexOf(dot);
+        if (idx > -1) trailDots.splice(idx, 1);
+      }, 300);
+    }, lifespan);
+
+    // Cap trail length
+    while (trailDots.length > MAX_TRAIL + tier * 5) {
+      const old = trailDots.shift();
+      old.remove();
+    }
+  });
+
   /* ── Full Reset ────────────────────────── */
   function fullReset() {
     clickCount = 0;
@@ -1672,6 +1714,9 @@
     stopGlitchMemory();
     stopEchos();
     stopButtonDodge();
+    // Clear cursor trail
+    trailDots.forEach(d => d.remove());
+    trailDots.length = 0;
     AudioEngine.stopHeartbeat();
     if (tearRAF) cancelAnimationFrame(tearRAF);
     tearCtx.clearRect(0, 0, tearCanvas.width, tearCanvas.height);
@@ -1770,8 +1815,18 @@
         konamiIdx = 0;
         clickCount = Math.max(clickCount, 100);
         save();
+        // Konami flash overlay
+        const flash = document.createElement('div');
+        flash.className = 'konami-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 600);
+        // Screen effect
         app.style.filter = 'hue-rotate(180deg) saturate(3)';
         setTimeout(() => { app.style.filter = ''; applyEffects(); }, 500);
+        // SFX burst
+        AudioEngine.playImpact(2);
+        AudioEngine.playGlassShatter();
+        triggerCinematic(100);
       }
     } else {
       konamiIdx = 0;

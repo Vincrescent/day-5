@@ -511,3 +511,123 @@ html, body {
   70% { opacity: 0.1; transform: translate(-50%,-50%) scale(0.95) skewX(5deg); }
   100% { opacity: 0; transform: translate(-50%,-50%) scale(0.8) skewX(-10deg); }
 }
+
+/* ═══════════════════════════════════════════
+   Cursor trail dots
+   ═══════════════════════════════════════════ */
+.cursor-trail-dot {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 8;
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease-out;
+}
+
+/* ═══════════════════════════════════════════
+   Button glow aura (evolving per tier)
+   ═══════════════════════════════════════════ */
+.mega-1 #glitch-btn {
+  box-shadow: 0 0 15px rgba(0,255,213,0.15), 0 0 30px rgba(0,255,213,0.05);
+  animation: btnAura1 2s ease-in-out infinite;
+}
+@keyframes btnAura1 {
+  0%, 100% { box-shadow: 0 0 15px rgba(0,255,213,0.15), 0 0 30px rgba(0,255,213,0.05); }
+  50% { box-shadow: 0 0 25px rgba(0,255,213,0.25), 0 0 50px rgba(0,255,213,0.1); }
+}
+
+.mega-2 #glitch-btn {
+  box-shadow: 0 0 25px rgba(255,0,255,0.2), 0 0 60px rgba(0,255,213,0.15);
+  animation: btnAura2 1.5s ease-in-out infinite;
+}
+@keyframes btnAura2 {
+  0%, 100% { box-shadow: 0 0 25px rgba(255,0,255,0.2), 0 0 60px rgba(0,255,213,0.15); }
+  50% { box-shadow: 0 0 40px rgba(255,0,255,0.35), 0 0 80px rgba(0,255,213,0.2), 0 0 120px rgba(255,51,51,0.1); }
+}
+
+.mega-3 #glitch-btn {
+  box-shadow: 0 0 30px rgba(255,51,51,0.3), 0 0 60px rgba(255,0,255,0.25), 0 0 100px rgba(0,255,213,0.15);
+  animation: btnAura3 1s ease-in-out infinite;
+  border-color: var(--error-red) !important;
+}
+@keyframes btnAura3 {
+  0%, 100% { box-shadow: 0 0 30px rgba(255,51,51,0.3), 0 0 60px rgba(255,0,255,0.25), 0 0 100px rgba(0,255,213,0.15); }
+  30% { box-shadow: 0 0 50px rgba(255,51,51,0.5), 0 0 80px rgba(255,0,255,0.35), 0 0 130px rgba(0,255,213,0.2); }
+  60% { box-shadow: 0 0 35px rgba(0,255,213,0.4), 0 0 70px rgba(255,51,51,0.3), 0 0 110px rgba(255,0,255,0.2); }
+}
+
+/* ═══════════════════════════════════════════
+   Konami code flash
+   ═══════════════════════════════════════════ */
+@keyframes konamiFlash {
+  0% { background: rgba(0,255,213,0.6); }
+  30% { background: rgba(255,0,255,0.5); }
+  60% { background: rgba(255,255,255,0.4); }
+  100% { background: transparent; }
+}
+.konami-flash {
+  position: fixed; inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  animation: konamiFlash 0.5s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════
+   Ambient background nebula
+   ═══════════════════════════════════════════ */
+.mega-1 #app { background: radial-gradient(ellipse at 30% 60%, rgba(0,255,213,0.03) 0%, transparent 60%); }
+.mega-2 #app { background: radial-gradient(ellipse at 70% 40%, rgba(255,0,255,0.04) 0%, transparent 50%),
+                            radial-gradient(ellipse at 20% 70%, rgba(0,255,213,0.03) 0%, transparent 60%); }
+.mega-3 #app { background: radial-gradient(ellipse at 50% 50%, rgba(255,51,51,0.04) 0%, transparent 40%),
+                            radial-gradient(ellipse at 80% 30%, rgba(255,0,255,0.05) 0%, transparent 50%),
+                            radial-gradient(ellipse at 15% 80%, rgba(0,255,213,0.04) 0%, transparent 60%); }
+.mega-4 #app { background: radial-gradient(ellipse at 50% 50%, rgba(255,51,51,0.06) 0%, transparent 35%),
+                            radial-gradient(ellipse at 80% 20%, rgba(255,0,255,0.06) 0%, transparent 45%),
+                            radial-gradient(ellipse at 10% 90%, rgba(0,255,213,0.05) 0%, transparent 55%),
+                            radial-gradient(ellipse at 60% 80%, rgba(255,200,50,0.03) 0%, transparent 40%);
+               animation: nebulaShift 8s ease-in-out infinite; }
+.mega-5 #app { background: radial-gradient(ellipse at 50% 50%, rgba(255,51,51,0.08) 0%, transparent 30%),
+                            radial-gradient(ellipse at 80% 20%, rgba(255,0,255,0.08) 0%, transparent 40%),
+                            radial-gradient(ellipse at 10% 90%, rgba(0,255,213,0.07) 0%, transparent 50%),
+                            radial-gradient(ellipse at 60% 80%, rgba(255,200,50,0.05) 0%, transparent 35%),
+                            radial-gradient(ellipse at 30% 30%, rgba(100,0,255,0.06) 0%, transparent 45%);
+               animation: nebulaShift 4s ease-in-out infinite; }
+
+@keyframes nebulaShift {
+  0%, 100% { filter: contrast(1.3) saturate(0.5) brightness(0.8) hue-rotate(0deg); }
+  33% { filter: contrast(1.3) saturate(0.6) brightness(0.85) hue-rotate(15deg); }
+  66% { filter: contrast(1.3) saturate(0.5) brightness(0.75) hue-rotate(-10deg); }
+}
+
+/* ═══════════════════════════════════════════
+   Screen shake intensification
+   ═══════════════════════════════════════════ */
+@keyframes megaShake2 {
+  0%, 100% { transform: translate(0,0) rotate(0); }
+  10% { transform: translate(-4px, 3px) rotate(-0.5deg); }
+  20% { transform: translate(5px, -4px) rotate(0.3deg); }
+  30% { transform: translate(-3px, 5px) rotate(-0.2deg); }
+  40% { transform: translate(6px, -2px) rotate(0.4deg); }
+  50% { transform: translate(-5px, 4px) rotate(-0.3deg); }
+  60% { transform: translate(3px, -6px) rotate(0.5deg); }
+  70% { transform: translate(-6px, 2px) rotate(-0.4deg); }
+  80% { transform: translate(4px, -3px) rotate(0.2deg); }
+  90% { transform: translate(-2px, 5px) rotate(-0.1deg); }
+}
+@keyframes megaShake3 {
+  0%, 100% { transform: translate(0,0) rotate(0); }
+  10% { transform: translate(-8px, 6px) rotate(-1deg); }
+  20% { transform: translate(10px, -7px) rotate(0.8deg); }
+  30% { transform: translate(-6px, 9px) rotate(-0.6deg); }
+  40% { transform: translate(11px, -5px) rotate(1deg); }
+  50% { transform: translate(-9px, 8px) rotate(-0.8deg); }
+  60% { transform: translate(7px, -10px) rotate(1.2deg); }
+  70% { transform: translate(-11px, 4px) rotate(-1deg); }
+  80% { transform: translate(8px, -6px) rotate(0.7deg); }
+  90% { transform: translate(-4px, 10px) rotate(-0.5deg); }
+}
+
+.mega-2 #app { animation: megaShake2 0.15s ease-in-out infinite; }
+.mega-3 #app { animation: megaShake3 0.12s ease-in-out infinite; }
+.mega-4 #app { animation: megaShake3 0.08s ease-in-out infinite; }
+.mega-5 #app { animation: megaShake3 0.05s ease-in-out infinite; }
