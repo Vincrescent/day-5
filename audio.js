@@ -20,6 +20,7 @@ const AudioEngine = (() => {
     impactBoom:    'sfx/impact-boom.mp3',
     glitchHorror:  'sfx/glitch-horror.mp3',
     glassDebris:   'sfx/glass-debris.mp3',
+    explosionBoom: 'sfx/explosion-boom.mp3',
   };
 
   async function loadSFX() {
@@ -192,6 +193,28 @@ const AudioEngine = (() => {
     playSFXRandom('glitchHorror', 0.4, 0.15, 0.6, 1.5);
   }
 
+  /* ── EXPLOSION BOOM (real file) ─────────── */
+  function playExplosion() {
+    // Main explosion at full volume, low pitch for that DUAR feel
+    playSFX('explosionBoom', 0.9, 0.7, -200);
+    // Layered: second hit slightly delayed, different pitch
+    setTimeout(() => playSFX('explosionBoom', 0.6, 0.5, -400), 80);
+    // Sub-bass rumble on top
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(40, now);
+    sub.frequency.exponentialRampToValueAtTime(15, now + 0.6);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.5, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+    sub.connect(g);
+    g.connect(masterGain);
+    sub.start(now);
+    sub.stop(now + 0.8);
+  }
+
   /* ── CHAOS NOISE BURST (synth, bitcrush) ── */
   function playChaosNoise(duration, vol) {
     if (!ctx) return;
@@ -296,9 +319,10 @@ const AudioEngine = (() => {
       if (Math.random() > 0.5) setTimeout(() => playChaosNoise(0.1, 0.16), 180);
     }
 
-    // Tier 4 (400+): heavy layered every click
+    // Tier 4 (400+): heavy layered every click + random explosions
     if (tier >= 4) {
       playImpact(1.5);
+      if (clickCount % 5 === 0) playExplosion();
       setTimeout(() => playDimensionTear(), 40);
       setTimeout(() => playGlassShatter(), 100);
       setTimeout(() => playChaosNoise(0.12, 0.14), 160);
@@ -310,6 +334,7 @@ const AudioEngine = (() => {
       playGlassShatter();
       playImpact(2);
       playGlitchHorror();
+      if (clickCount % 2 === 0) playExplosion();
       setTimeout(() => playDimensionTear(), 30);
       setTimeout(() => playGlassShatter(), 80);
       setTimeout(() => playImpact(1.5), 130);
@@ -350,6 +375,6 @@ const AudioEngine = (() => {
   return {
     init, playClick, setDroneIntensity, silenceAll, restoreAudio, reset,
     ensureResumed, startDrone, startHeartbeat, stopHeartbeat,
-    playGlassShatter, playDimensionTear, playImpact, playChaosNoise, playGlitchHorror
+    playGlassShatter, playDimensionTear, playImpact, playChaosNoise, playGlitchHorror, playExplosion
   };
 })();

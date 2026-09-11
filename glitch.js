@@ -1774,6 +1774,7 @@
       AudioEngine.playImpact(2.5);
       AudioEngine.playGlassShatter();
       AudioEngine.playDimensionTear();
+      if (clickCount >= 400) AudioEngine.playExplosion();
       triggerCinematic(clickCount);
       document.body.style.filter = 'invert(1) hue-rotate(180deg)';
       setTimeout(() => { document.body.style.filter = ''; }, 200);
